@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const NOTIFICATION_API_BASE_URL = "http://localhost:8080/api/notifications";
+import { API_BASE_URL } from "./api-config";
+const NOTIFICATION_API_BASE_URL = `${API_BASE_URL}/api/notifications`;
 
 interface ApiErrorResponse {
   timestamp: string;

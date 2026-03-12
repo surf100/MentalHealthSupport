@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const ADMIN_API_BASE_URL = "http://localhost:8080/api/admin";
+import { API_BASE_URL } from "./api-config";
+const ADMIN_API_BASE_URL = `${API_BASE_URL}/api/admin`;
 
 interface ApiErrorResponse {
   timestamp: string;

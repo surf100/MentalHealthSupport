@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const PROFILE_API_BASE_URL = "http://localhost:8080/api/profile";
+import { API_BASE_URL } from "./api-config";
+const PROFILE_API_BASE_URL = `${API_BASE_URL}/api/profile`;
 
 interface ApiErrorResponse {
   timestamp: string;

@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const DASHBOARD_API_BASE_URL = "http://localhost:8080/api/dashboard";
+import { API_BASE_URL } from "./api-config";
+const DASHBOARD_API_BASE_URL = `${API_BASE_URL}/api/dashboard`;
 
 interface ApiErrorResponse {
   timestamp: string;

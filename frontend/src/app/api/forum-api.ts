@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const FORUM_API_BASE_URL = "http://localhost:8080/api/forum";
+import { API_BASE_URL } from "./api-config";
+const FORUM_API_BASE_URL = `${API_BASE_URL}/api/forum`;
 
 interface ApiErrorResponse {
   timestamp: string;

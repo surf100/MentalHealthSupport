@@ -1,6 +1,7 @@
 import { getToken } from "../lib/auth-storage";
 
-const REPORT_API_BASE_URL = "http://localhost:8080/api/reports";
+import { API_BASE_URL } from "./api-config";
+const REPORT_API_BASE_URL = `${API_BASE_URL}/api/reports`;
 
 interface ApiErrorResponse {
   timestamp: string;

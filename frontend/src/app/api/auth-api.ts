@@ -1,5 +1,6 @@
 import { getToken } from "../lib/auth-storage";
-const API_BASE_URL = "http://localhost:8080/api/auth";
+import { API_BASE_URL } from "./api-config";
+const AUTH_API_BASE_URL = `${API_BASE_URL}/api/auth`;
 
 export interface SignUpRequest {
   email: string;
@@ -41,7 +42,7 @@ async function parseError(response: Response): Promise<never> {
 }
 
 export async function signUp(data: SignUpRequest): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/sign-up`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/sign-up`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -57,7 +58,7 @@ export async function signUp(data: SignUpRequest): Promise<AuthResponse> {
 }
 
 export async function signIn(data: SignInRequest): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/sign-in`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/sign-in`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -81,7 +82,7 @@ export interface CurrentUserResponse {
 export async function getCurrentUser(): Promise<CurrentUserResponse> {
   const token = getToken();
 
-  const response = await fetch(`${API_BASE_URL}/me`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/me`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

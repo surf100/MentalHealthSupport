@@ -1,0 +1,15 @@
+package com.mentalhealth.platform.report.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.mentalhealth.platform.report.entity.Report;
+import com.mentalhealth.platform.user.entity.User;
+
+public interface ReportRepository extends JpaRepository<Report, Long> {
+
+    List<Report> findByUserOrderByCreatedAtDesc(User user);
+
+    long countByUser(User user);
+}

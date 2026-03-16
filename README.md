@@ -52,6 +52,19 @@ Install pnpm if you don't have it:
 npm install -g pnpm
 ```
 
+### ML service requirements
+
+| Tool   | Version | Download                |
+|--------|---------|-------------------------|
+| Python | 3.11+   | https://www.python.org  |
+| pip    | latest  | bundled with Python     |
+
+Verify installation:
+```bash
+python --version
+pip --version
+```
+
 ---
 
 ## Database Setup
@@ -251,8 +264,33 @@ pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8001
 ```
 
-Then start the Spring backend normally. New forum posts will be sent to the local MentalBERT
-service in the background and flagged for moderator review when the model returns high risk.
+If the Hugging Face model requires authentication, log in before starting `uvicorn`:
+
+```bash
+hf auth login
+```
+
+Or set a token in the same PowerShell session:
+
+```bash
+$env:HF_TOKEN="your_huggingface_token"
+```
+
+Check the service after startup:
+
+```bash
+http://localhost:8001/health
+```
+
+Expected response:
+
+```json
+{"status":"ok","modelId":"slimshady07/Mental_BERT"}
+```
+
+Then start the Spring backend normally. New forum posts and anonymous reports will be sent to the
+local MentalBERT service in the background and flagged for moderator review when the model returns
+high risk.
 
 ### 3. Run the backend
 
@@ -288,15 +326,24 @@ The frontend will start at **http://localhost:5173**
 
 ## Running the Full Project
 
-Open two terminal windows:
+Open three terminal windows:
 
-**Terminal 1 — Backend:**
+**Terminal 1 - MentalBERT ML service:**
+```bash
+cd ml-service
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8001
+```
+
+**Terminal 2 - Backend:**
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-**Terminal 2 — Frontend:**
+**Terminal 3 - Frontend:**
 ```bash
 cd frontend
 pnpm install
@@ -313,6 +360,7 @@ Then open **http://localhost:5173** in your browser.
 |----------|---------------------------|
 | Frontend | http://localhost:5173      |
 | Backend  | http://localhost:8080      |
+| ML API   | http://localhost:8001      |
 | Database | localhost:5432             |
 
 ---

@@ -15,6 +15,9 @@ public class ForumPostResponse {
     private long likeCount;
     private boolean likedByMe;
     private LocalDateTime createdAt;
+    private int riskScore;
+    private String riskLevel;
+    private String moderationStatus;
 
     public ForumPostResponse() {}
 
@@ -31,6 +34,9 @@ public class ForumPostResponse {
         dto.likeCount = likeCount;
         dto.likedByMe = likedByMe;
         dto.createdAt = post.getCreatedAt();
+        dto.riskScore = post.getRiskScore();
+        dto.riskLevel = post.getRiskLevel().name();
+        dto.moderationStatus = post.getModerationStatus().name();
         return dto;
     }
 
@@ -43,4 +49,7 @@ public class ForumPostResponse {
     public long getLikeCount() { return likeCount; }
     public boolean isLikedByMe() { return likedByMe; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public int getRiskScore() { return riskScore; }
+    public String getRiskLevel() { return riskLevel; }
+    public String getModerationStatus() { return moderationStatus; }
 }

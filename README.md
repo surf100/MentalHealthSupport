@@ -219,6 +219,41 @@ spring:
 > **Important:** `ddl-auto: validate` means Hibernate will NOT create tables automatically.
 > You must run the SQL from the Database Setup section above first.
 
+### 2.1 Configure local MentalBERT moderation
+
+This project now expects a local model service for forum risk analysis.
+
+The backend calls a local HTTP service at:
+
+```bash
+MENTALBERT_SERVICE_URL=http://localhost:8001
+```
+
+The included Python service in `ml-service/` loads a real Hugging Face sequence-classification
+checkpoint locally. By default it uses:
+
+```bash
+MENTALBERT_MODEL_ID=slimshady07/Mental_BERT
+```
+
+You can also point `MENTALBERT_MODEL_ID` to a local filesystem path if you already downloaded
+the model and want fully offline startup.
+
+### 2.2 Start the MentalBERT service
+
+Open a separate terminal:
+
+```bash
+cd ml-service
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8001
+```
+
+Then start the Spring backend normally. New forum posts will be sent to the local MentalBERT
+service in the background and flagged for moderator review when the model returns high risk.
+
 ### 3. Run the backend
 
 ```bash

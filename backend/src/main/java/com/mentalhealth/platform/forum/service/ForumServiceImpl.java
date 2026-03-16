@@ -3,9 +3,11 @@ package com.mentalhealth.platform.forum.service;
 import com.mentalhealth.platform.common.exception.BadRequestException;
 import com.mentalhealth.platform.forum.dto.*;
 import com.mentalhealth.platform.forum.entity.*;
+import com.mentalhealth.platform.forum.event.ForumPostCreatedEvent;
 import com.mentalhealth.platform.forum.repository.*;
 import com.mentalhealth.platform.user.entity.User;
 import com.mentalhealth.platform.user.repository.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,17 +21,20 @@ public class ForumServiceImpl implements ForumService {
     private final ForumCommentRepository commentRepository;
     private final ForumPostLikeRepository likeRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ForumServiceImpl(
             ForumPostRepository postRepository,
             ForumCommentRepository commentRepository,
             ForumPostLikeRepository likeRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.likeRepository = likeRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -80,8 +85,10 @@ public class ForumServiceImpl implements ForumService {
         post.setContent(request.getContent().trim());
         post.setCategory(request.getCategory());
         post.setAnonymous(request.isAnonymous());
+        post.setModerationStatus(ForumPostModerationStatus.PENDING_ANALYSIS);
 
         ForumPost saved = postRepository.save(post);
+        eventPublisher.publishEvent(new ForumPostCreatedEvent(saved.getId()));
         return ForumPostResponse.from(saved, 0, 0, false);
     }
 

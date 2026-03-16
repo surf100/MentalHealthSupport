@@ -1,10 +1,12 @@
 package com.mentalhealth.platform.user.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.mentalhealth.platform.user.entity.User;
+import com.mentalhealth.platform.user.enums.UserRole;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -13,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNickname(String nickname);
 
     Optional<User> findByEmail(String email);
+
+    List<User> findByRole(UserRole role);
 }

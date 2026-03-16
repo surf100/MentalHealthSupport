@@ -97,6 +97,64 @@ export type AdminAnalyticsResponse = {
   pendingReports: number;
   totalUsers: number;
   totalForumPosts: number;
+  flaggedForumPosts: number;
+  pendingForumModeration: number;
+  specialistEscalations: number;
+  criticalForumPosts: number;
+};
+
+export type ForumRiskLevel = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+
+export type ForumModerationStatus =
+  | "PENDING_ANALYSIS"
+  | "ANALYSIS_FAILED"
+  | "CLEAR"
+  | "FLAGGED"
+  | "REVIEWED"
+  | "ESCALATED_TO_SPECIALIST"
+  | "DISMISSED";
+
+export type ForumModerationQueueItemResponse = {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  authorNickname: string;
+  authorEmail: string;
+  anonymousToCommunity: boolean;
+  riskScore: number;
+  sentimentScore: number;
+  riskLevel: ForumRiskLevel;
+  moderationStatus: ForumModerationStatus;
+  flaggedForReview: boolean;
+  riskSummary: string;
+  moderationNotes: string | null;
+  analyzedAt: string | null;
+  reviewedAt: string | null;
+  specialistReferredAt: string | null;
+  createdAt: string;
+};
+
+export type ReportModerationQueueItemResponse = {
+  id: number;
+  reference: string;
+  title: string;
+  description: string;
+  category: string;
+  reportStatus: "SUBMITTED" | "UNDER_REVIEW" | "RESOLVED";
+  reporterEmail: string;
+  anonymous: boolean;
+  riskScore: number;
+  sentimentScore: number;
+  riskLevel: ForumRiskLevel;
+  moderationStatus: ForumModerationStatus;
+  flaggedForReview: boolean;
+  riskSummary: string | null;
+  moderationNotes: string | null;
+  analyzedAt: string | null;
+  reviewedAt: string | null;
+  specialistReferredAt: string | null;
+  createdAt: string;
 };
 
 // ─── API calls ────────────────────────────────────────────────────────────────
@@ -155,4 +213,78 @@ export async function getAuditLog(): Promise<AuditLogResponse[]> {
     headers: authHeaders(),
   });
   return handleResponse<AuditLogResponse[]>(response);
+}
+
+export async function getForumModerationPosts(): Promise<ForumModerationQueueItemResponse[]> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/forum-risk/posts`, {
+    headers: authHeaders(),
+  });
+  return handleResponse<ForumModerationQueueItemResponse[]>(response);
+}
+
+export async function getReportModerationReports(): Promise<ReportModerationQueueItemResponse[]> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports`, {
+    headers: authHeaders(),
+  });
+  return handleResponse<ReportModerationQueueItemResponse[]>(response);
+}
+
+export async function reviewFlaggedForumPost(
+  id: number
+): Promise<ForumModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/forum-risk/posts/${id}/review`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ForumModerationQueueItemResponse>(response);
+}
+
+export async function dismissFlaggedForumPost(
+  id: number
+): Promise<ForumModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/forum-risk/posts/${id}/dismiss`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ForumModerationQueueItemResponse>(response);
+}
+
+export async function escalateFlaggedForumPost(
+  id: number
+): Promise<ForumModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/forum-risk/posts/${id}/escalate`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ForumModerationQueueItemResponse>(response);
+}
+
+export async function reviewFlaggedReport(
+  id: number
+): Promise<ReportModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/review`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ReportModerationQueueItemResponse>(response);
+}
+
+export async function dismissFlaggedReport(
+  id: number
+): Promise<ReportModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/dismiss`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ReportModerationQueueItemResponse>(response);
+}
+
+export async function escalateFlaggedReport(
+  id: number
+): Promise<ReportModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/escalate`, {
+    method: "PUT",
+    headers: authHeaders(),
+  });
+  return handleResponse<ReportModerationQueueItemResponse>(response);
 }

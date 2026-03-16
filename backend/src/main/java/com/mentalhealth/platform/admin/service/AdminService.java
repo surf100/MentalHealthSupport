@@ -7,6 +7,8 @@ import com.mentalhealth.platform.admin.dto.AdminStatsResponse;
 import com.mentalhealth.platform.admin.dto.AdminUserResponse;
 import com.mentalhealth.platform.admin.dto.AuditLogResponse;
 import com.mentalhealth.platform.admin.dto.ChangeRoleRequest;
+import com.mentalhealth.platform.forum.dto.ForumModerationQueueItemResponse;
+import com.mentalhealth.platform.report.dto.ReportModerationQueueItemResponse;
 
 public interface AdminService {
 
@@ -23,4 +25,20 @@ public interface AdminService {
     AdminUserResponse unbanUser(String actorEmail, Long targetUserId);
 
     List<AuditLogResponse> getAuditLog();
+
+    List<ForumModerationQueueItemResponse> getForumModerationPosts();
+
+    List<ReportModerationQueueItemResponse> getReportModerationReports();
+
+    ForumModerationQueueItemResponse reviewFlaggedForumPost(String actorEmail, Long postId);
+
+    ForumModerationQueueItemResponse dismissFlaggedForumPost(String actorEmail, Long postId);
+
+    ForumModerationQueueItemResponse escalateFlaggedForumPost(String actorEmail, Long postId);
+
+    ReportModerationQueueItemResponse reviewFlaggedReport(String actorEmail, Long reportId);
+
+    ReportModerationQueueItemResponse dismissFlaggedReport(String actorEmail, Long reportId);
+
+    ReportModerationQueueItemResponse escalateFlaggedReport(String actorEmail, Long reportId);
 }

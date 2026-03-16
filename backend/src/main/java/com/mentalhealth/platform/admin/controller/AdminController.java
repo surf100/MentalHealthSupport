@@ -18,6 +18,8 @@ import com.mentalhealth.platform.admin.dto.AdminUserResponse;
 import com.mentalhealth.platform.admin.dto.AuditLogResponse;
 import com.mentalhealth.platform.admin.dto.ChangeRoleRequest;
 import com.mentalhealth.platform.admin.service.AdminService;
+import com.mentalhealth.platform.forum.dto.ForumModerationQueueItemResponse;
+import com.mentalhealth.platform.report.dto.ReportModerationQueueItemResponse;
 
 import jakarta.validation.Valid;
 
@@ -75,5 +77,63 @@ public class AdminController {
     @GetMapping("/audit-log")
     public ResponseEntity<List<AuditLogResponse>> getAuditLog() {
         return ResponseEntity.ok(adminService.getAuditLog());
+    }
+
+    @GetMapping("/forum-risk/posts")
+    public ResponseEntity<List<ForumModerationQueueItemResponse>> getForumModerationPosts() {
+        return ResponseEntity.ok(adminService.getForumModerationPosts());
+    }
+
+    @GetMapping("/report-risk/reports")
+    public ResponseEntity<List<ReportModerationQueueItemResponse>> getReportModerationReports() {
+        return ResponseEntity.ok(adminService.getReportModerationReports());
+    }
+
+    @PutMapping("/forum-risk/posts/{id}/review")
+    public ResponseEntity<ForumModerationQueueItemResponse> reviewFlaggedForumPost(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.reviewFlaggedForumPost(authentication.getName(), id));
+    }
+
+    @PutMapping("/forum-risk/posts/{id}/dismiss")
+    public ResponseEntity<ForumModerationQueueItemResponse> dismissFlaggedForumPost(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.dismissFlaggedForumPost(authentication.getName(), id));
+    }
+
+    @PutMapping("/forum-risk/posts/{id}/escalate")
+    public ResponseEntity<ForumModerationQueueItemResponse> escalateFlaggedForumPost(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.escalateFlaggedForumPost(authentication.getName(), id));
+    }
+
+    @PutMapping("/report-risk/reports/{id}/review")
+    public ResponseEntity<ReportModerationQueueItemResponse> reviewFlaggedReport(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.reviewFlaggedReport(authentication.getName(), id));
+    }
+
+    @PutMapping("/report-risk/reports/{id}/dismiss")
+    public ResponseEntity<ReportModerationQueueItemResponse> dismissFlaggedReport(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.dismissFlaggedReport(authentication.getName(), id));
+    }
+
+    @PutMapping("/report-risk/reports/{id}/escalate")
+    public ResponseEntity<ReportModerationQueueItemResponse> escalateFlaggedReport(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(adminService.escalateFlaggedReport(authentication.getName(), id));
     }
 }

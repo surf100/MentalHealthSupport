@@ -71,6 +71,13 @@ export function Header() {
               >
                 Admin Analytics
               </button>
+
+              <button
+                onClick={() => navigate("/admin/forum-risk")}
+                className="text-sm text-red-600 hover:text-red-800 font-medium"
+              >
+                Moderation Queue
+              </button>
             </>
           )}
         </nav>

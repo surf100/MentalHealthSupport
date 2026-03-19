@@ -59,6 +59,15 @@ export type ForumPostResponse = {
   likeCount: number;
   likedByMe: boolean;
   createdAt: string;
+  riskScore: number;
+  riskLevel: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+  moderationStatus:
+    | "PENDING_ANALYSIS"
+    | "CLEAR"
+    | "FLAGGED"
+    | "REVIEWED"
+    | "ESCALATED_TO_SPECIALIST"
+    | "DISMISSED";
 };
 
 export type ForumCommentResponse = {
@@ -78,6 +87,16 @@ export type ForumPostDetailResponse = {
   likedByMe: boolean;
   createdAt: string;
   comments: ForumCommentResponse[];
+  riskScore: number;
+  riskLevel: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+  moderationStatus:
+    | "PENDING_ANALYSIS"
+    | "CLEAR"
+    | "FLAGGED"
+    | "REVIEWED"
+    | "ESCALATED_TO_SPECIALIST"
+    | "DISMISSED";
+  riskSummary: string | null;
 };
 
 export type CreatePostRequest = {

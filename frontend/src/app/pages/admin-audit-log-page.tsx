@@ -12,6 +12,18 @@ function getActionBadge(action: string) {
       return "bg-emerald-50 text-emerald-700";
     case "ROLE_CHANGED":
       return "bg-blue-50 text-blue-700";
+    case "FORUM_POST_REVIEWED":
+      return "bg-sky-50 text-sky-700";
+    case "FORUM_POST_DISMISSED":
+      return "bg-gray-50 text-gray-700";
+    case "FORUM_POST_ESCALATED_TO_SPECIALIST":
+      return "bg-orange-50 text-orange-700";
+    case "REPORT_REVIEWED":
+      return "bg-sky-50 text-sky-700";
+    case "REPORT_DISMISSED":
+      return "bg-gray-50 text-gray-700";
+    case "REPORT_ESCALATED_TO_SPECIALIST":
+      return "bg-orange-50 text-orange-700";
     default:
       return "bg-gray-50 text-gray-700";
   }
@@ -25,6 +37,18 @@ function getActionLabel(action: string) {
       return "User Unbanned";
     case "ROLE_CHANGED":
       return "Role Changed";
+    case "FORUM_POST_REVIEWED":
+      return "Post Reviewed";
+    case "FORUM_POST_DISMISSED":
+      return "Post Dismissed";
+    case "FORUM_POST_ESCALATED_TO_SPECIALIST":
+      return "Escalated to Specialist";
+    case "REPORT_REVIEWED":
+      return "Report Reviewed";
+    case "REPORT_DISMISSED":
+      return "Report Dismissed";
+    case "REPORT_ESCALATED_TO_SPECIALIST":
+      return "Report Escalated";
     default:
       return action;
   }
@@ -65,7 +89,7 @@ export function AdminAuditLogPage() {
     if (!q) return logs;
     return logs.filter(
       (log) =>
-        (log.actorEmail ?? "").toLowerCase().includes(q) ||
+        (log.actor ?? "").toLowerCase().includes(q) ||
         (log.action ?? "").toLowerCase().includes(q) ||
         (log.target ?? "").toLowerCase().includes(q) ||
         (log.details ?? "").toLowerCase().includes(q)
@@ -73,7 +97,17 @@ export function AdminAuditLogPage() {
   }, [query, logs]);
 
   const accountActions = logs.filter((l) =>
-    ["USER_BANNED", "USER_UNBANNED", "ROLE_CHANGED"].includes(l.action)
+    [
+      "USER_BANNED",
+      "USER_UNBANNED",
+      "ROLE_CHANGED",
+      "FORUM_POST_REVIEWED",
+      "FORUM_POST_DISMISSED",
+      "FORUM_POST_ESCALATED_TO_SPECIALIST",
+      "REPORT_REVIEWED",
+      "REPORT_DISMISSED",
+      "REPORT_ESCALATED_TO_SPECIALIST",
+    ].includes(l.action)
   ).length;
 
   return (
@@ -158,7 +192,7 @@ export function AdminAuditLogPage() {
                           className="grid grid-cols-12 gap-4 px-6 py-5 items-start"
                         >
                           <div className="col-span-3">
-                            <p className="font-medium text-gray-900 text-sm">{log.actorEmail}</p>
+                            <p className="font-medium text-gray-900 text-sm">{log.actor}</p>
                           </div>
 
                           <div className="col-span-3">

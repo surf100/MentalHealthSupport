@@ -21,6 +21,7 @@ import { TermsPage } from "./pages/terms-page";
 import { AdminUsersPage } from "./pages/admin-users-page";
 import { AdminAuditLogPage } from "./pages/admin-audit-log-page";
 import { AdminAnalyticsPage } from "./pages/admin-analytics-page";
+import { AdminForumRiskPage } from "./pages/admin-forum-risk-page";
 import { CommunityGuidelinesPage } from "./pages/community-guidelines-page";
 import { AboutPage } from "./pages/about-page";
 import { ContactPage } from "./pages/contact-page";
@@ -156,6 +157,14 @@ export const router = createBrowserRouter([
     Component: () => (
       <AdminRoute>
         <AdminAnalyticsPage />
+      </AdminRoute>
+    ),
+  },
+  {
+    path: "/admin/forum-risk",
+    Component: () => (
+      <AdminRoute>
+        <AdminForumRiskPage />
       </AdminRoute>
     ),
   },

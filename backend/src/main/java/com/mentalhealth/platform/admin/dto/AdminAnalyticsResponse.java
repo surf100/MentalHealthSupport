@@ -13,6 +13,10 @@ public class AdminAnalyticsResponse {
     private long pendingReports;
     private long totalUsers;
     private long totalForumPosts;
+    private long flaggedForumPosts;
+    private long pendingForumModeration;
+    private long specialistEscalations;
+    private long criticalForumPosts;
 
     public AdminAnalyticsResponse() {}
 
@@ -25,7 +29,11 @@ public class AdminAnalyticsResponse {
             long criticalReports,
             long pendingReports,
             long totalUsers,
-            long totalForumPosts
+            long totalForumPosts,
+            long flaggedForumPosts,
+            long pendingForumModeration,
+            long specialistEscalations,
+            long criticalForumPosts
     ) {
         this.reportsByDay = reportsByDay;
         this.reportsByCategory = reportsByCategory;
@@ -36,6 +44,10 @@ public class AdminAnalyticsResponse {
         this.pendingReports = pendingReports;
         this.totalUsers = totalUsers;
         this.totalForumPosts = totalForumPosts;
+        this.flaggedForumPosts = flaggedForumPosts;
+        this.pendingForumModeration = pendingForumModeration;
+        this.specialistEscalations = specialistEscalations;
+        this.criticalForumPosts = criticalForumPosts;
     }
 
     // ─── Getters ──────────────────────────────────────────────────────────────
@@ -49,6 +61,10 @@ public class AdminAnalyticsResponse {
     public long getPendingReports() { return pendingReports; }
     public long getTotalUsers() { return totalUsers; }
     public long getTotalForumPosts() { return totalForumPosts; }
+    public long getFlaggedForumPosts() { return flaggedForumPosts; }
+    public long getPendingForumModeration() { return pendingForumModeration; }
+    public long getSpecialistEscalations() { return specialistEscalations; }
+    public long getCriticalForumPosts() { return criticalForumPosts; }
 
     // ─── Nested DTOs ──────────────────────────────────────────────────────────
 

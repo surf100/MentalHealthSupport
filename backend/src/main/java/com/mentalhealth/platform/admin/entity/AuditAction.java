@@ -3,5 +3,11 @@ package com.mentalhealth.platform.admin.entity;
 public enum AuditAction {
     USER_BANNED,
     USER_UNBANNED,
-    ROLE_CHANGED
+    ROLE_CHANGED,
+    FORUM_POST_REVIEWED,
+    FORUM_POST_DISMISSED,
+    FORUM_POST_ESCALATED_TO_SPECIALIST,
+    REPORT_REVIEWED,
+    REPORT_DISMISSED,
+    REPORT_ESCALATED_TO_SPECIALIST
 }

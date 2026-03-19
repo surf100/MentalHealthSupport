@@ -4,8 +4,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.mentalhealth.platform.common.exception.BadRequestException;
+import com.mentalhealth.platform.forum.entity.ForumPostModerationStatus;
 import com.mentalhealth.platform.report.dto.CreateReportRequest;
 import com.mentalhealth.platform.report.dto.ReportDetailResponse;
 import com.mentalhealth.platform.report.dto.ReportResponse;
@@ -13,6 +15,7 @@ import com.mentalhealth.platform.report.dto.TimelineItemResponse;
 import com.mentalhealth.platform.report.entity.Report;
 import com.mentalhealth.platform.report.entity.ReportStatus;
 import com.mentalhealth.platform.report.entity.ReportStatusHistory;
+import com.mentalhealth.platform.report.event.ReportCreatedEvent;
 import com.mentalhealth.platform.report.repository.ReportRepository;
 import com.mentalhealth.platform.report.repository.ReportStatusHistoryRepository;
 import com.mentalhealth.platform.user.entity.User;
@@ -24,15 +27,18 @@ public class ReportServiceImpl implements ReportService {
     private final ReportRepository reportRepository;
     private final ReportStatusHistoryRepository historyRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ReportServiceImpl(
             ReportRepository reportRepository,
             ReportStatusHistoryRepository historyRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.reportRepository = reportRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -47,6 +53,7 @@ public class ReportServiceImpl implements ReportService {
         report.setDescription(request.getDescription());
         report.setCategory(request.getCategory());
         report.setAnonymous(request.getIsAnonymous());
+        report.setModerationStatus(ForumPostModerationStatus.PENDING_ANALYSIS);
 
         Report saved = reportRepository.save(report);
 
@@ -58,6 +65,7 @@ public class ReportServiceImpl implements ReportService {
                 "Your report was successfully received by the platform."
         );
         historyRepository.save(initial);
+        eventPublisher.publishEvent(new ReportCreatedEvent(saved.getId()));
 
         return ReportResponse.from(saved);
     }

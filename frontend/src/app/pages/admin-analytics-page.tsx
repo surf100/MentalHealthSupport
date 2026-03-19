@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { Header } from "../components/header";
 import { Footer } from "../components/footer";
 import {
@@ -22,11 +23,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import { getAnalytics, type AdminAnalyticsResponse } from "../api/admin-api";
-
-// ─── Colours ──────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS = ["#ef4444", "#f97316", "#3b82f6", "#8b5cf6", "#6b7280"];
 const STATUS_COLORS: Record<string, string> = {
@@ -35,8 +33,6 @@ const STATUS_COLORS: Record<string, string> = {
   Resolved: "#10b981",
   Closed: "#6b7280",
 };
-
-// ─── Stat card ────────────────────────────────────────────────────────────────
 
 function StatCard({
   icon,
@@ -63,8 +59,6 @@ function StatCard({
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
 function ChartCard({
   title,
   children,
@@ -79,8 +73,6 @@ function ChartCard({
     </div>
   );
 }
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
   return (
@@ -104,9 +96,8 @@ function Skeleton() {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export function AdminAnalyticsPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState<AdminAnalyticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +113,7 @@ export function AdminAnalyticsPage() {
         setIsLoading(false);
       }
     }
+
     load();
   }, []);
 
@@ -131,15 +123,13 @@ export function AdminAnalyticsPage() {
 
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-8 py-12">
-
-          {/* Header */}
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-2">
               <BarChart3 className="w-6 h-6" />
               <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
             </div>
             <p className="text-gray-500 text-sm">
-              Platform trends, report analysis, and risk indicators.
+              Platform trends, report analysis, and moderator risk indicators.
             </p>
           </div>
 
@@ -159,8 +149,6 @@ export function AdminAnalyticsPage() {
 
           {data && (
             <div className="space-y-8">
-
-              {/* ── KPI cards ── */}
               <div className="grid grid-cols-4 gap-6">
                 <StatCard
                   icon={<FileText className="w-5 h-5 text-blue-500" />}
@@ -170,16 +158,16 @@ export function AdminAnalyticsPage() {
                 />
                 <StatCard
                   icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
-                  label="Critical Reports"
-                  value={data.criticalReports}
-                  sub="Harassment & Safety"
+                  label="Critical Cases"
+                  value={data.criticalReports + data.criticalForumPosts}
+                  sub={`${data.criticalForumPosts} flagged in forum`}
                   accent="border-red-200 bg-red-50"
                 />
                 <StatCard
                   icon={<Clock className="w-5 h-5 text-amber-500" />}
                   label="Pending Review"
-                  value={data.pendingReports}
-                  sub="Awaiting admin action"
+                  value={data.pendingReports + data.pendingForumModeration}
+                  sub={`${data.pendingForumModeration} forum posts waiting`}
                 />
                 <StatCard
                   icon={<Users className="w-5 h-5 text-emerald-500" />}
@@ -189,7 +177,6 @@ export function AdminAnalyticsPage() {
                 />
               </div>
 
-              {/* ── Reports over time + Registrations ── */}
               <div className="grid grid-cols-2 gap-6">
                 <ChartCard title="Reports Over Time">
                   {data.reportsByDay.length === 0 ? (
@@ -250,9 +237,7 @@ export function AdminAnalyticsPage() {
                 </ChartCard>
               </div>
 
-              {/* ── Category bar + Status pie + Critical list ── */}
               <div className="grid grid-cols-3 gap-6">
-
                 <ChartCard title="Reports by Category">
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={data.reportsByCategory} layout="vertical">
@@ -301,54 +286,56 @@ export function AdminAnalyticsPage() {
                   </ResponsiveContainer>
                 </ChartCard>
 
-                <ChartCard title="Risk Indicators">
+                <ChartCard title="Forum Risk Indicators">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-100">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-                        <span className="text-sm font-medium">Critical cases</span>
+                        <span className="text-sm font-medium">Critical forum posts</span>
                       </div>
                       <span className="text-lg font-bold text-red-600">
-                        {data.criticalReports}
+                        {data.criticalForumPosts}
                       </span>
                     </div>
+
                     <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-100">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                        <span className="text-sm font-medium">Pending review</span>
+                        <span className="text-sm font-medium">Pending moderation</span>
                       </div>
                       <span className="text-lg font-bold text-amber-600">
-                        {data.pendingReports}
+                        {data.pendingForumModeration}
                       </span>
                     </div>
+
                     <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-100">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-blue-500 shrink-0" />
-                        <span className="text-sm font-medium">Forum posts</span>
+                        <span className="text-sm font-medium">Open flagged posts</span>
                       </div>
                       <span className="text-lg font-bold text-blue-600">
-                        {data.totalForumPosts}
+                        {data.flaggedForumPosts}
                       </span>
                     </div>
+
                     <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-100">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span className="text-sm font-medium">Total users</span>
+                        <span className="text-sm font-medium">Specialist escalations</span>
                       </div>
                       <span className="text-lg font-bold text-emerald-600">
-                        {data.totalUsers}
+                        {data.specialistEscalations}
                       </span>
                     </div>
 
-                    {/* Placeholder for sentiment analysis integration */}
-                    <div className="mt-2 p-3 rounded-lg border border-dashed border-gray-200 text-center">
-                      <p className="text-xs text-gray-400">
-                        🧠 Sentiment analysis scores will appear here once integrated
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => navigate("/admin/forum-risk")}
+                      className="w-full mt-2 bg-black text-white py-2.5 rounded-lg text-sm hover:bg-gray-800"
+                    >
+                      Open Moderation Queue
+                    </button>
                   </div>
                 </ChartCard>
-
               </div>
             </div>
           )}

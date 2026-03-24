@@ -13,11 +13,14 @@ import {
   type AdminUserRole,
   type AdminUserStatus,
 } from "../api/admin-api";
+import { useAuth } from "../auth/auth-context";
 
 function getRoleBadge(role: AdminUserRole) {
   switch (role) {
     case "ADMIN":
       return "bg-red-50 text-red-700";
+    case "SPECIALIST":
+      return "bg-purple-50 text-purple-700";
     case "USER":
       return "bg-emerald-50 text-emerald-700";
     default:
@@ -29,6 +32,8 @@ function getRoleLabel(role: AdminUserRole) {
   switch (role) {
     case "ADMIN":
       return "Admin";
+    case "SPECIALIST":
+      return "Specialist";
     case "USER":
       return "User";
     default:
@@ -63,12 +68,14 @@ function getStatusLabel(status: AdminUserStatus) {
 }
 
 export function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<AdminUserResponse[]>([]);
   const [stats, setStats] = useState<AdminStatsResponse | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [roleDrafts, setRoleDrafts] = useState<Record<number, AdminUserRole>>({});
 
   useEffect(() => {
     async function load() {
@@ -103,11 +110,16 @@ export function AdminUsersPage() {
   }, [query, users]);
 
   async function handleChangeRole(user: AdminUserResponse) {
-    const newRole: AdminUserRole = user.role === "ADMIN" ? "USER" : "ADMIN";
+    const newRole = roleDrafts[user.id] ?? user.role;
+    if (newRole === user.role) {
+      return;
+    }
+
     try {
       setActionLoading(user.id);
       const updated = await changeUserRole(user.id, newRole);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setRoleDrafts((prev) => ({ ...prev, [user.id]: updated.role }));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to change role");
     } finally {
@@ -226,6 +238,10 @@ export function AdminUsersPage() {
                           key={user.id}
                           className="grid grid-cols-12 gap-4 px-6 py-5 items-center"
                         >
+                          {/*
+                            The backend also blocks self-role and self-ban changes.
+                            This keeps the UI aligned with that rule.
+                          */}
                           <div className="col-span-4">
                             <p className="font-medium text-gray-900">{user.nickname}</p>
                             <p className="text-sm text-gray-500 mt-1">{user.email}</p>
@@ -244,19 +260,39 @@ export function AdminUsersPage() {
                           </div>
 
                           <div className="col-span-4 flex flex-wrap gap-2">
+                            <select
+                              value={roleDrafts[user.id] ?? user.role}
+                              onChange={(e) =>
+                                setRoleDrafts((prev) => ({
+                                  ...prev,
+                                  [user.id]: e.target.value as AdminUserRole,
+                                }))
+                              }
+                              disabled={actionLoading === user.id || currentUser?.email === user.email}
+                              className="border px-3 py-2 rounded-md text-sm bg-white disabled:opacity-50"
+                            >
+                              <option value="USER">User</option>
+                              <option value="ADMIN">Admin</option>
+                              <option value="SPECIALIST">Specialist</option>
+                            </select>
+
                             <button
                               onClick={() => handleChangeRole(user)}
-                              disabled={actionLoading === user.id}
+                              disabled={
+                                actionLoading === user.id ||
+                                currentUser?.email === user.email ||
+                                (roleDrafts[user.id] ?? user.role) === user.role
+                              }
                               className="border px-3 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2 disabled:opacity-50"
                             >
                               <UserCheck className="w-4 h-4" />
-                              {user.role === "ADMIN" ? "Make User" : "Make Admin"}
+                              Update Role
                             </button>
 
                             {user.status === "ACTIVE" ? (
                               <button
                                 onClick={() => handleBan(user)}
-                                disabled={actionLoading === user.id}
+                                disabled={actionLoading === user.id || currentUser?.email === user.email}
                                 className="border px-3 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2 disabled:opacity-50"
                               >
                                 <Ban className="w-4 h-4" />
@@ -293,7 +329,7 @@ export function AdminUsersPage() {
                   <Shield className="w-6 h-6 text-blue-600 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Role management</h3>
                   <p className="text-sm text-gray-600 leading-6">
-                    Assign admin access where needed.
+                    Assign admin and specialist access where needed.
                   </p>
                 </div>
 

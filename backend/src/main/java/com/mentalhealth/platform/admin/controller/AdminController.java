@@ -17,6 +17,7 @@ import com.mentalhealth.platform.admin.dto.AdminStatsResponse;
 import com.mentalhealth.platform.admin.dto.AdminUserResponse;
 import com.mentalhealth.platform.admin.dto.AuditLogResponse;
 import com.mentalhealth.platform.admin.dto.ChangeRoleRequest;
+import com.mentalhealth.platform.admin.dto.SpecialistResponseRequest;
 import com.mentalhealth.platform.admin.service.AdminService;
 import com.mentalhealth.platform.forum.dto.ForumModerationQueueItemResponse;
 import com.mentalhealth.platform.report.dto.ReportModerationQueueItemResponse;
@@ -25,7 +26,6 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     private final AdminService adminService;
@@ -35,21 +35,25 @@ public class AdminController {
     }
 
     @GetMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AdminUserResponse>> getAllUsers() {
         return ResponseEntity.ok(adminService.getAllUsers());
     }
 
     @GetMapping("/users/stats")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminStatsResponse> getStats() {
         return ResponseEntity.ok(adminService.getStats());
     }
 
     @GetMapping("/analytics")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(adminService.getAnalytics());
     }
 
     @PutMapping("/users/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminUserResponse> changeRole(
             Authentication authentication,
             @PathVariable Long id,
@@ -59,6 +63,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminUserResponse> banUser(
             Authentication authentication,
             @PathVariable Long id
@@ -67,6 +72,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminUserResponse> unbanUser(
             Authentication authentication,
             @PathVariable Long id
@@ -75,21 +81,25 @@ public class AdminController {
     }
 
     @GetMapping("/audit-log")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AuditLogResponse>> getAuditLog() {
         return ResponseEntity.ok(adminService.getAuditLog());
     }
 
     @GetMapping("/forum-risk/posts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SPECIALIST')")
     public ResponseEntity<List<ForumModerationQueueItemResponse>> getForumModerationPosts() {
         return ResponseEntity.ok(adminService.getForumModerationPosts());
     }
 
     @GetMapping("/report-risk/reports")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SPECIALIST')")
     public ResponseEntity<List<ReportModerationQueueItemResponse>> getReportModerationReports() {
         return ResponseEntity.ok(adminService.getReportModerationReports());
     }
 
     @PutMapping("/forum-risk/posts/{id}/review")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ForumModerationQueueItemResponse> reviewFlaggedForumPost(
             Authentication authentication,
             @PathVariable Long id
@@ -98,6 +108,7 @@ public class AdminController {
     }
 
     @PutMapping("/forum-risk/posts/{id}/dismiss")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ForumModerationQueueItemResponse> dismissFlaggedForumPost(
             Authentication authentication,
             @PathVariable Long id
@@ -106,6 +117,7 @@ public class AdminController {
     }
 
     @PutMapping("/forum-risk/posts/{id}/escalate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ForumModerationQueueItemResponse> escalateFlaggedForumPost(
             Authentication authentication,
             @PathVariable Long id
@@ -114,6 +126,7 @@ public class AdminController {
     }
 
     @PutMapping("/report-risk/reports/{id}/review")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReportModerationQueueItemResponse> reviewFlaggedReport(
             Authentication authentication,
             @PathVariable Long id
@@ -122,6 +135,7 @@ public class AdminController {
     }
 
     @PutMapping("/report-risk/reports/{id}/dismiss")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReportModerationQueueItemResponse> dismissFlaggedReport(
             Authentication authentication,
             @PathVariable Long id
@@ -130,10 +144,21 @@ public class AdminController {
     }
 
     @PutMapping("/report-risk/reports/{id}/escalate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReportModerationQueueItemResponse> escalateFlaggedReport(
             Authentication authentication,
             @PathVariable Long id
     ) {
         return ResponseEntity.ok(adminService.escalateFlaggedReport(authentication.getName(), id));
+    }
+
+    @PutMapping("/report-risk/reports/{id}/respond")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SPECIALIST')")
+    public ResponseEntity<ReportModerationQueueItemResponse> addSpecialistResponse(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody SpecialistResponseRequest request
+    ) {
+        return ResponseEntity.ok(adminService.addSpecialistResponse(authentication.getName(), id, request));
     }
 }

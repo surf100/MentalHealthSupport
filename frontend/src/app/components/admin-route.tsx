@@ -1,7 +1,13 @@
 import { Navigate } from "react-router";
 import { useAuth } from "../auth/auth-context";
 
-export function AdminRoute({ children }: { children: React.ReactNode }) {
+export function AdminRoute({
+  children,
+  allowedRoles = ["ADMIN"],
+}: {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}) {
   const { isAuthenticated, isInitializing, user } = useAuth();
 
   if (isInitializing) {
@@ -12,7 +18,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/sign-in" replace />;
   }
 
-  if (user?.role !== "ADMIN") {
+  if (!user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/404" replace />;
   }
 

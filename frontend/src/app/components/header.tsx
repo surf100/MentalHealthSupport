@@ -7,6 +7,7 @@ export function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const canAccessModerationQueue = user?.role === "ADMIN" || user?.role === "SPECIALIST";
 
   const handleLogout = () => {
     logout();
@@ -72,13 +73,16 @@ export function Header() {
                 Admin Analytics
               </button>
 
-              <button
-                onClick={() => navigate("/admin/forum-risk")}
-                className="text-sm text-red-600 hover:text-red-800 font-medium"
-              >
-                Moderation Queue
-              </button>
             </>
+          )}
+
+          {canAccessModerationQueue && (
+            <button
+              onClick={() => navigate("/admin/forum-risk")}
+              className="text-sm text-red-600 hover:text-red-800 font-medium"
+            >
+              Moderation Queue
+            </button>
           )}
         </nav>
 

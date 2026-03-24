@@ -11,6 +11,25 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 DEFAULT_MODEL_ID = "slimshady07/Mental_BERT"
 MAX_LENGTH = int(os.getenv("MENTALBERT_MAX_LENGTH", "256"))
 HF_TOKEN = os.getenv("HF_TOKEN")
+RISK_SCORE_MULTIPLIER = float(os.getenv("MENTALBERT_RISK_SCORE_MULTIPLIER", "1.5"))
+MODERATE_RISK_THRESHOLD = int(os.getenv("MENTALBERT_MODERATE_THRESHOLD", "20"))
+HIGH_RISK_THRESHOLD = int(os.getenv("MENTALBERT_HIGH_THRESHOLD", "45"))
+CRITICAL_RISK_THRESHOLD = int(os.getenv("MENTALBERT_CRITICAL_THRESHOLD", "75"))
+CRISIS_PHRASE_SCORE_FLOOR = int(os.getenv("MENTALBERT_CRISIS_PHRASE_SCORE_FLOOR", "85"))
+
+CRISIS_PHRASE_WEIGHTS = {
+    "kill myself": 100,
+    "end my life": 100,
+    "want to die": 95,
+    "don't want to live": 95,
+    "do not want to live": 95,
+    "suicide": 100,
+    "suicidal": 95,
+    "hurt myself": CRISIS_PHRASE_SCORE_FLOOR,
+    "self harm": CRISIS_PHRASE_SCORE_FLOOR,
+    "self-harm": CRISIS_PHRASE_SCORE_FLOOR,
+    "harm myself": CRISIS_PHRASE_SCORE_FLOOR,
+}
 
 app = FastAPI(title="MentalBERT Risk Service", version="1.0.0")
 
@@ -116,21 +135,52 @@ def derive_risk_probability(labels: List[LabelScore]) -> float:
 
 
 def risk_level_for_score(risk_score: int) -> str:
-    if risk_score >= 85:
+    if risk_score >= CRITICAL_RISK_THRESHOLD:
         return "CRITICAL"
-    if risk_score >= 60:
+    if risk_score >= HIGH_RISK_THRESHOLD:
         return "HIGH"
-    if risk_score >= 30:
+    if risk_score >= MODERATE_RISK_THRESHOLD:
         return "MODERATE"
     return "LOW"
 
 
-def build_summary(labels: List[LabelScore], risk_score: int, model_id: str) -> str:
+def calibrate_risk_score(raw_score: int) -> int:
+    adjusted = int(round(raw_score * RISK_SCORE_MULTIPLIER))
+    return max(0, min(100, adjusted))
+
+
+def crisis_score_floor_for_text(text: str) -> tuple[int, List[str]]:
+    normalized = text.lower()
+    matched_phrases = [
+        phrase
+        for phrase in CRISIS_PHRASE_WEIGHTS
+        if phrase in normalized
+    ]
+
+    if not matched_phrases:
+        return 0, []
+
+    score_floor = max(CRISIS_PHRASE_WEIGHTS[phrase] for phrase in matched_phrases)
+    return score_floor, matched_phrases
+
+
+def build_summary(
+    labels: List[LabelScore],
+    risk_score: int,
+    model_id: str,
+    matched_phrases: List[str],
+) -> str:
     top_items = labels[:2]
     signals = ", ".join(
         f"{item.label} {item.score:.2f}"
         for item in top_items
     )
+    if matched_phrases:
+        phrases = ", ".join(matched_phrases)
+        return (
+            f"{model_id} top signals: {signals}. "
+            f"Detected crisis phrases: {phrases}. Computed risk score {risk_score}/100."
+        )
     return f"{model_id} top signals: {signals}. Computed risk score {risk_score}/100."
 
 
@@ -173,17 +223,23 @@ def analyze(request: AnalyzeRequest):
         labels.sort(key=lambda item: item.score, reverse=True)
 
         risk_probability = derive_risk_probability(labels)
-        risk_score = int(round(risk_probability * 100))
+        model_risk_score = int(round(risk_probability * 100))
+        risk_score = calibrate_risk_score(model_risk_score)
+        crisis_score_floor, matched_phrases = crisis_score_floor_for_text(
+            f"{request.title}\n{request.content}"
+        )
+        risk_score = max(risk_score, crisis_score_floor)
         risk_level = risk_level_for_score(risk_score)
         flagged_for_review = risk_level in {"HIGH", "CRITICAL"}
-        sentiment_score = round(1.0 - (2.0 * risk_probability), 4)
+        effective_risk_probability = risk_score / 100.0
+        sentiment_score = round(1.0 - (2.0 * effective_risk_probability), 4)
 
         return AnalyzeResponse(
             sentimentScore=max(-1.0, min(1.0, sentiment_score)),
             riskScore=risk_score,
             riskLevel=risk_level,
             flaggedForReview=flagged_for_review,
-            summary=build_summary(labels, risk_score, model_id),
+            summary=build_summary(labels, risk_score, model_id, matched_phrases),
             modelId=model_id,
             labels=labels,
         )

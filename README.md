@@ -252,6 +252,19 @@ MENTALBERT_MODEL_ID=slimshady07/Mental_BERT
 You can also point `MENTALBERT_MODEL_ID` to a local filesystem path if you already downloaded
 the model and want fully offline startup.
 
+The ML sidecar also supports sensitivity tuning:
+
+```bash
+MENTALBERT_RISK_SCORE_MULTIPLIER=1.5
+MENTALBERT_MODERATE_THRESHOLD=20
+MENTALBERT_HIGH_THRESHOLD=45
+MENTALBERT_CRITICAL_THRESHOLD=75
+MENTALBERT_CRISIS_PHRASE_SCORE_FLOOR=85
+```
+
+Those defaults make the moderation flow more conservative and force explicit self-harm phrases
+such as `hurt myself`, `self harm`, `suicidal`, or `kill myself` into a high-risk path.
+
 ### 2.2 Start the MentalBERT service
 
 Open a separate terminal:

@@ -7,6 +7,7 @@ import com.mentalhealth.platform.admin.dto.AdminStatsResponse;
 import com.mentalhealth.platform.admin.dto.AdminUserResponse;
 import com.mentalhealth.platform.admin.dto.AuditLogResponse;
 import com.mentalhealth.platform.admin.dto.ChangeRoleRequest;
+import com.mentalhealth.platform.admin.dto.SpecialistResponseRequest;
 import com.mentalhealth.platform.forum.dto.ForumModerationQueueItemResponse;
 import com.mentalhealth.platform.report.dto.ReportModerationQueueItemResponse;
 
@@ -41,4 +42,10 @@ public interface AdminService {
     ReportModerationQueueItemResponse dismissFlaggedReport(String actorEmail, Long reportId);
 
     ReportModerationQueueItemResponse escalateFlaggedReport(String actorEmail, Long reportId);
+
+    ReportModerationQueueItemResponse addSpecialistResponse(
+            String actorEmail,
+            Long reportId,
+            SpecialistResponseRequest request
+    );
 }

@@ -3,7 +3,9 @@ import { useNavigate } from "react-router";
 import { AlertTriangle, ArrowUpRight, Brain, FileText, Search, ShieldAlert, UserRound } from "lucide-react";
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
+import { useAuth } from "../auth/auth-context";
 import {
+  addSpecialistResponse,
   dismissFlaggedForumPost,
   dismissFlaggedReport,
   escalateFlaggedForumPost,
@@ -20,6 +22,7 @@ import {
 
 type StatusFilter = "ALL" | ForumModerationStatus;
 type ModerationView = "REPORTS" | "FORUM";
+type QueueMode = "MODERATOR" | "SPECIALIST";
 
 const STATUS_FILTERS: StatusFilter[] = [
   "ALL",
@@ -97,6 +100,25 @@ function getFailureHint(status: ForumModerationStatus) {
   return "This item is visible for moderator review, but it is not currently flagged for urgent action.";
 }
 
+function getReportStatusBadge(status: ReportModerationQueueItemResponse["reportStatus"]) {
+  switch (status) {
+    case "RESOLVED":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "UNDER_REVIEW":
+      return "bg-amber-100 text-amber-700 border-amber-200";
+    default:
+      return "bg-sky-100 text-sky-700 border-sky-200";
+  }
+}
+
+function formatReportStatusLabel(status: ReportModerationQueueItemResponse["reportStatus"]) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function getSummaryText(
   summary: string | null,
   status: ForumModerationStatus,
@@ -113,6 +135,12 @@ function getSummaryText(
 
 export function AdminForumRiskPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+  const canUseSpecialistQueue = user?.role === "ADMIN" || user?.role === "SPECIALIST";
+  const [queueMode, setQueueMode] = useState<QueueMode>(
+    user?.role === "SPECIALIST" ? "SPECIALIST" : "MODERATOR"
+  );
   const [view, setView] = useState<ModerationView>("REPORTS");
   const [forumPosts, setForumPosts] = useState<ForumModerationQueueItemResponse[]>([]);
   const [reports, setReports] = useState<ReportModerationQueueItemResponse[]>([]);
@@ -121,6 +149,7 @@ export function AdminForumRiskPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [responseDrafts, setResponseDrafts] = useState<Record<number, string>>({});
 
   useEffect(() => {
     async function load() {
@@ -145,7 +174,19 @@ export function AdminForumRiskPage() {
     };
   }, []);
 
-  const activeItems = view === "REPORTS" ? reports : forumPosts;
+  useEffect(() => {
+    if (user?.role === "SPECIALIST") {
+      setQueueMode("SPECIALIST");
+    }
+  }, [user?.role]);
+
+  const baseItems = view === "REPORTS" ? reports : forumPosts;
+  const activeItems = useMemo(() => {
+    if (queueMode === "SPECIALIST") {
+      return baseItems.filter((item) => item.moderationStatus === "ESCALATED_TO_SPECIALIST");
+    }
+    return baseItems;
+  }, [baseItems, queueMode]);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -212,6 +253,26 @@ export function AdminForumRiskPage() {
     }
   }
 
+  async function runSpecialistResponse(reportId: number) {
+    const message = responseDrafts[reportId]?.trim() ?? "";
+    if (!message) {
+      alert("Enter a specialist response before submitting.");
+      return;
+    }
+
+    const actionKey = `report-response-${reportId}`;
+    try {
+      setActionLoading(actionKey);
+      const updated = await addSpecialistResponse(reportId, message);
+      setReports((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setResponseDrafts((prev) => ({ ...prev, [reportId]: "" }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to submit specialist response");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
@@ -222,19 +283,47 @@ export function AdminForumRiskPage() {
             <div>
               <h1 className="text-5xl font-bold mb-3">Moderation Queue</h1>
               <p className="text-lg text-gray-600 max-w-3xl">
-                Review AI analysis for anonymous reports and forum posts, prioritize high-risk cases,
-                and escalate urgent situations to specialists.
+                {queueMode === "SPECIALIST"
+                  ? "Focus on cases already escalated to specialists and send a direct response back through the report timeline."
+                  : "Review AI analysis for anonymous reports and forum posts, prioritize high-risk cases, and escalate urgent situations to specialists."}
               </p>
             </div>
 
-            <button
-              onClick={() => navigate("/admin/analytics")}
-              className="border px-4 py-3 rounded-lg text-sm hover:bg-gray-50 inline-flex items-center gap-2"
-            >
-              View Analytics
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin/analytics")}
+                className="border px-4 py-3 rounded-lg text-sm hover:bg-gray-50 inline-flex items-center gap-2"
+              >
+                View Analytics
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
+
+          {canUseSpecialistQueue && (
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={() => setQueueMode("MODERATOR")}
+                className={`px-5 py-3 rounded-xl border text-sm font-medium ${
+                  queueMode === "MODERATOR"
+                    ? "bg-black text-white border-black"
+                    : "border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                Moderator Queue
+              </button>
+              <button
+                onClick={() => setQueueMode("SPECIALIST")}
+                className={`px-5 py-3 rounded-xl border text-sm font-medium ${
+                  queueMode === "SPECIALIST"
+                    ? "bg-black text-white border-black"
+                    : "border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                Escalated Cases
+              </button>
+            </div>
+          )}
 
           <div className="flex gap-3 mb-8">
             <button
@@ -275,21 +364,27 @@ export function AdminForumRiskPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-6">
-            {STATUS_FILTERS.map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-full text-sm border ${
-                  statusFilter === status
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                {status === "ALL" ? "All Items" : formatStatusLabel(status)}
-              </button>
-            ))}
-          </div>
+          {queueMode === "MODERATOR" ? (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {STATUS_FILTERS.map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-4 py-2 rounded-full text-sm border ${
+                    statusFilter === status
+                      ? "bg-black text-white border-black"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {status === "ALL" ? "All Items" : formatStatusLabel(status)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mb-6 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-800">
+              Showing only items with status {formatStatusLabel("ESCALATED_TO_SPECIALIST")}.
+            </div>
+          )}
 
           <div className="flex items-center gap-3 border px-4 py-3 rounded-xl mb-6">
             <Search className="w-4 h-4 text-gray-400" />
@@ -298,8 +393,12 @@ export function AdminForumRiskPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={view === "REPORTS"
-                ? "Search reports by reference, title, description, reporter, or analysis summary"
-                : "Search forum posts by title, content, author, or analysis summary"}
+                ? queueMode === "SPECIALIST"
+                  ? "Search escalated reports by reference, title, description, reporter, or specialist notes"
+                  : "Search reports by reference, title, description, reporter, or analysis summary"
+                : queueMode === "SPECIALIST"
+                  ? "Search escalated forum posts by title, content, author, or analysis summary"
+                  : "Search forum posts by title, content, author, or analysis summary"}
               className="w-full outline-none text-sm"
             />
           </div>
@@ -316,7 +415,9 @@ export function AdminForumRiskPage() {
             <div className="border rounded-xl p-10 text-center">
               <h2 className="text-2xl font-semibold mb-2">No items match this moderation view</h2>
               <p className="text-sm text-gray-600">
-                Try a different filter, or wait for MentalBERT analysis to complete after submission.
+                {queueMode === "SPECIALIST"
+                  ? "No escalated cases match this view right now."
+                  : "Try a different filter, or wait for MentalBERT analysis to complete after submission."}
               </p>
             </div>
           ) : (
@@ -352,7 +453,9 @@ export function AdminForumRiskPage() {
 
                         <div className="text-right">
                           <p className="text-sm text-gray-500">Report status</p>
-                          <p className="font-semibold mt-1">{report.reportStatus.replaceAll("_", " ")}</p>
+                          <span className={`inline-flex text-xs px-3 py-1 rounded-full border mt-2 ${getReportStatusBadge(report.reportStatus)}`}>
+                            {formatReportStatusLabel(report.reportStatus)}
+                          </span>
                         </div>
                       </div>
 
@@ -400,7 +503,7 @@ export function AdminForumRiskPage() {
                           </div>
 
                           <div className="grid gap-2">
-                            {report.flaggedForReview ? (
+                            {report.flaggedForReview && isAdmin ? (
                               <>
                                 <button
                                   onClick={() => runReportAction(report.id, escalateFlaggedReport)}
@@ -424,6 +527,40 @@ export function AdminForumRiskPage() {
                                   Dismiss Flag
                                 </button>
                               </>
+                            ) : report.moderationStatus === "ESCALATED_TO_SPECIALIST" ? (
+                              <div className="grid gap-2">
+                                {report.reportStatus === "RESOLVED" && (
+                                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+                                    Specialist response sent. The reporter has been notified and the case is now marked resolved.
+                                  </div>
+                                )}
+                                <textarea
+                                  value={responseDrafts[report.id] ?? ""}
+                                  onChange={(e) =>
+                                    setResponseDrafts((prev) => ({
+                                      ...prev,
+                                      [report.id]: e.target.value,
+                                    }))
+                                  }
+                                  rows={4}
+                                  placeholder={
+                                    report.reportStatus === "RESOLVED"
+                                      ? "Add a follow-up specialist response if needed."
+                                      : "Add a specialist response that will appear in the report timeline."
+                                  }
+                                  disabled={actionLoading === `report-response-${report.id}`}
+                                  className="w-full border rounded-lg px-3 py-2 text-sm outline-none resize-none"
+                                />
+                                <button
+                                  onClick={() => runSpecialistResponse(report.id)}
+                                  disabled={actionLoading === `report-response-${report.id}`}
+                                  className="w-full bg-purple-600 text-white py-2.5 rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                  {report.reportStatus === "RESOLVED"
+                                    ? "Send Follow-up Response"
+                                    : "Send Specialist Response"}
+                                </button>
+                              </div>
                             ) : (
                               <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-gray-600">
                                 {getFailureHint(report.moderationStatus)}

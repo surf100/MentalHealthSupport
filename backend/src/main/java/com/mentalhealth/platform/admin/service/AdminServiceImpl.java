@@ -10,6 +10,9 @@ import com.mentalhealth.platform.forum.entity.ForumPost;
 import com.mentalhealth.platform.forum.entity.ForumPostModerationStatus;
 import com.mentalhealth.platform.forum.entity.ForumPostRiskLevel;
 import com.mentalhealth.platform.forum.repository.ForumPostRepository;
+import com.mentalhealth.platform.notification.entity.Notification;
+import com.mentalhealth.platform.notification.entity.NotificationType;
+import com.mentalhealth.platform.notification.repository.NotificationRepository;
 import com.mentalhealth.platform.report.dto.ReportModerationQueueItemResponse;
 import com.mentalhealth.platform.report.entity.Report;
 import com.mentalhealth.platform.report.entity.ReportCategory;
@@ -38,6 +41,7 @@ public class AdminServiceImpl implements AdminService {
     private final ReportRepository reportRepository;
     private final ForumPostRepository forumPostRepository;
     private final ReportStatusHistoryRepository reportStatusHistoryRepository;
+    private final NotificationRepository notificationRepository;
 
     private static final DateTimeFormatter DAY_FORMAT =
             DateTimeFormatter.ofPattern("MMM dd");
@@ -47,13 +51,15 @@ public class AdminServiceImpl implements AdminService {
             AuditLogRepository auditLogRepository,
             ReportRepository reportRepository,
             ForumPostRepository forumPostRepository,
-            ReportStatusHistoryRepository reportStatusHistoryRepository
+            ReportStatusHistoryRepository reportStatusHistoryRepository,
+            NotificationRepository notificationRepository
     ) {
         this.userRepository = userRepository;
         this.auditLogRepository = auditLogRepository;
         this.reportRepository = reportRepository;
         this.forumPostRepository = forumPostRepository;
         this.reportStatusHistoryRepository = reportStatusHistoryRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -173,7 +179,16 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public AdminUserResponse changeRole(String actorEmail, Long targetUserId, ChangeRoleRequest request) {
         User actor = getUserByEmail(actorEmail);
+        requireAdmin(actor);
         User target = getUserById(targetUserId);
+
+        if (actor.getId().equals(target.getId())) {
+            throw new BadRequestException("Admins cannot change their own role");
+        }
+
+        if (target.getRole() == request.getRole()) {
+            throw new BadRequestException("User already has this role");
+        }
 
         String oldRole = target.getRole().name();
         target.setRole(request.getRole());
@@ -193,7 +208,12 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public AdminUserResponse banUser(String actorEmail, Long targetUserId) {
         User actor = getUserByEmail(actorEmail);
+        requireAdmin(actor);
         User target = getUserById(targetUserId);
+
+        if (actor.getId().equals(target.getId())) {
+            throw new BadRequestException("Admins cannot ban themselves");
+        }
 
         if (target.getStatus() == UserStatus.BANNED) {
             throw new BadRequestException("User is already banned");
@@ -216,6 +236,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public AdminUserResponse unbanUser(String actorEmail, Long targetUserId) {
         User actor = getUserByEmail(actorEmail);
+        requireAdmin(actor);
         User target = getUserById(targetUserId);
 
         if (target.getStatus() != UserStatus.BANNED) {
@@ -339,6 +360,53 @@ public class AdminServiceImpl implements AdminService {
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    @Override
+    @Transactional
+    public ReportModerationQueueItemResponse addSpecialistResponse(
+            String actorEmail,
+            Long reportId,
+            SpecialistResponseRequest request
+    ) {
+        User actor = getUserByEmail(actorEmail);
+        requireModerator(actor, true);
+
+        Report report = getReportById(reportId);
+        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+            throw new BadRequestException("Only reports escalated to specialists can receive a specialist response");
+        }
+
+        String message = request.getMessage().trim();
+        report.setStatus(ReportStatus.RESOLVED);
+        report.setReviewedAt(java.time.LocalDateTime.now());
+        report.setModerationNotes("Specialist response sent. Reporter notified.");
+        Report savedReport = reportRepository.save(report);
+
+        reportStatusHistoryRepository.save(new ReportStatusHistory(
+                savedReport,
+                ReportStatus.RESOLVED,
+                "Specialist response sent",
+                message
+        ));
+
+        Notification notification = new Notification();
+        notification.setUser(savedReport.getUser());
+        notification.setType(NotificationType.REPORT_UPDATE);
+        notification.setTitle("A mental health specialist responded to your report");
+        notification.setMessage(
+                "A specialist added a response to report RS-" + savedReport.getId() + "."
+        );
+        notificationRepository.save(notification);
+
+        auditLogRepository.save(new AuditLog(
+                actor,
+                AuditAction.REPORT_SPECIALIST_RESPONDED,
+                "report#" + savedReport.getId(),
+                "Added specialist response for report submitted by " + savedReport.getUser().getEmail() + "."
+        ));
+
+        return ReportModerationQueueItemResponse.from(savedReport);
+    }
+
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadRequestException("User not found"));
@@ -359,6 +427,20 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new BadRequestException("Report not found"));
     }
 
+    private void requireAdmin(User actor) {
+        if (actor.getRole() != UserRole.ADMIN) {
+            throw new BadRequestException("Only admins can manage user access");
+        }
+    }
+
+    private void requireModerator(User actor, boolean allowSpecialist) {
+        boolean isAdmin = actor.getRole() == UserRole.ADMIN;
+        boolean isSpecialist = actor.getRole() == UserRole.SPECIALIST;
+        if (!isAdmin && !(allowSpecialist && isSpecialist)) {
+            throw new BadRequestException("You do not have permission to handle moderation actions");
+        }
+    }
+
     private ForumModerationQueueItemResponse updateForumPostModerationStatus(
             String actorEmail,
             Long postId,
@@ -367,9 +449,7 @@ public class AdminServiceImpl implements AdminService {
             String actionText
     ) {
         User actor = getUserByEmail(actorEmail);
-        if (actor.getRole() != UserRole.ADMIN) {
-            throw new BadRequestException("Only moderators can update flagged posts");
-        }
+        requireModerator(actor, false);
 
         ForumPost post = getForumPostById(postId);
         post.setModerationStatus(status);
@@ -402,9 +482,7 @@ public class AdminServiceImpl implements AdminService {
             ReportStatus reportStatus
     ) {
         User actor = getUserByEmail(actorEmail);
-        if (actor.getRole() != UserRole.ADMIN) {
-            throw new BadRequestException("Only moderators can update flagged reports");
-        }
+        requireModerator(actor, false);
 
         Report report = getReportById(reportId);
         report.setModerationStatus(moderationStatus);

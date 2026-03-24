@@ -163,7 +163,7 @@ export const router = createBrowserRouter([
   {
     path: "/admin/forum-risk",
     Component: () => (
-      <AdminRoute>
+      <AdminRoute allowedRoles={["ADMIN", "SPECIALIST"]}>
         <AdminForumRiskPage />
       </AdminRoute>
     ),

@@ -41,7 +41,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AdminUserRole = "USER" | "ADMIN";
+export type AdminUserRole = "USER" | "ADMIN" | "SPECIALIST";
 export type AdminUserStatus = "ACTIVE" | "BANNED" | "SUSPENDED";
 
 export type AdminUserResponse = {
@@ -155,6 +155,10 @@ export type ReportModerationQueueItemResponse = {
   reviewedAt: string | null;
   specialistReferredAt: string | null;
   createdAt: string;
+};
+
+export type SpecialistResponseRequest = {
+  message: string;
 };
 
 // ─── API calls ────────────────────────────────────────────────────────────────
@@ -285,6 +289,18 @@ export async function escalateFlaggedReport(
   const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/escalate`, {
     method: "PUT",
     headers: authHeaders(),
+  });
+  return handleResponse<ReportModerationQueueItemResponse>(response);
+}
+
+export async function addSpecialistResponse(
+  id: number,
+  message: string
+): Promise<ReportModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/respond`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ message } satisfies SpecialistResponseRequest),
   });
   return handleResponse<ReportModerationQueueItemResponse>(response);
 }

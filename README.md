@@ -213,8 +213,8 @@ VALUES (
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/safespace.git
-cd safespace
+git clone https://github.com/surf100/MentalHealthSupport.git
+cd MentalHealthSupport
 ```
 
 ### 2. Configure the database connection

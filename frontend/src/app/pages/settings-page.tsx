@@ -21,6 +21,7 @@ import {
   type SettingsResponse,
 } from "../api/settings-api";
 import { saveToken } from "../lib/auth-storage";
+import { applyThemePreference } from "../lib/theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,6 +199,7 @@ export function SettingsPage() {
         setPrivacy(data.privacyModeEnabled);
         setTheme(data.themePreference);
         setLanguage(data.languagePreference);
+        applyThemePreference(data.themePreference);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load settings");
       } finally {
@@ -277,11 +279,15 @@ export function SettingsPage() {
 
   async function handlePreferenceChange(patch: Partial<SettingsResponse>) {
     clearMessages();
+    const previousSettings = settings;
     // Optimistic update
     setSettings((prev) => prev ? { ...prev, ...patch } : null);
     if (patch.notificationsEnabled !== undefined) setNotifications(patch.notificationsEnabled);
     if (patch.privacyModeEnabled !== undefined) setPrivacy(patch.privacyModeEnabled);
-    if (patch.themePreference !== undefined) setTheme(patch.themePreference);
+    if (patch.themePreference !== undefined) {
+      setTheme(patch.themePreference);
+      applyThemePreference(patch.themePreference);
+    }
     if (patch.languagePreference !== undefined) setLanguage(patch.languagePreference);
 
     try {
@@ -291,12 +297,13 @@ export function SettingsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save preferences");
       // Revert on error
-      if (settings) {
-        setNotifications(settings.notificationsEnabled);
-        setPrivacy(settings.privacyModeEnabled);
-        setTheme(settings.themePreference);
-        setLanguage(settings.languagePreference);
-        setSettings(settings);
+      if (previousSettings) {
+        setNotifications(previousSettings.notificationsEnabled);
+        setPrivacy(previousSettings.privacyModeEnabled);
+        setTheme(previousSettings.themePreference);
+        setLanguage(previousSettings.languagePreference);
+        setSettings(previousSettings);
+        applyThemePreference(previousSettings.themePreference);
       }
     }
   }

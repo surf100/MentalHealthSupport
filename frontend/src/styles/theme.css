@@ -124,6 +124,12 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -177,5 +183,60 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .dark .bg-white {
+    background-color: #0f172a !important;
+  }
+
+  .dark .bg-gray-50,
+  .dark .hover\:bg-gray-50:hover,
+  .dark .disabled\:bg-gray-50:disabled {
+    background-color: #111827 !important;
+  }
+
+  .dark .bg-gray-100,
+  .dark .bg-slate-100 {
+    background-color: #1f2937 !important;
+  }
+
+  .dark .border,
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300 {
+    border-color: #334155 !important;
+  }
+
+  .dark .text-gray-900 {
+    color: #f8fafc !important;
+  }
+
+  .dark .text-gray-800,
+  .dark .text-gray-700 {
+    color: #e2e8f0 !important;
+  }
+
+  .dark .text-gray-600,
+  .dark .text-gray-500 {
+    color: #94a3b8 !important;
+  }
+
+  .dark .text-gray-400,
+  .dark .disabled\:text-gray-500:disabled {
+    color: #64748b !important;
+  }
+
+  .dark input,
+  .dark textarea,
+  .dark select {
+    background-color: #0f172a;
+    color: #f8fafc;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #64748b;
   }
 }

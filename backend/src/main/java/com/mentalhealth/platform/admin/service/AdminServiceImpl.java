@@ -358,6 +358,38 @@ public class AdminServiceImpl implements AdminService {
         );
     }
 
+    @Override
+    @Transactional
+    public ReportModerationQueueItemResponse revealAnonymousReportIdentity(String actorEmail, Long reportId) {
+        User actor = getUserByEmail(actorEmail);
+        requireSpecialist(actor);
+
+        Report report = getReportById(reportId);
+        if (!report.isAnonymous()) {
+            throw new BadRequestException("Only anonymous reports can be de-anonymized");
+        }
+        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+            throw new BadRequestException("Only escalated specialist cases can reveal reporter identity");
+        }
+        if (report.isIdentityRevealedToSpecialist()) {
+            throw new BadRequestException("Reporter identity has already been revealed");
+        }
+
+        report.setIdentityRevealedToSpecialist(true);
+        report.setIdentityRevealedAt(java.time.LocalDateTime.now());
+        report.setModerationNotes("Reporter identity was revealed to a specialist for an escalated case.");
+        Report savedReport = reportRepository.save(report);
+
+        auditLogRepository.save(new AuditLog(
+                actor,
+                AuditAction.REPORT_IDENTITY_REVEALED,
+                "report#" + savedReport.getId(),
+                "Revealed anonymous reporter identity for specialist review."
+        ));
+
+        return ReportModerationQueueItemResponse.from(savedReport);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     @Override
@@ -438,6 +470,12 @@ public class AdminServiceImpl implements AdminService {
         boolean isSpecialist = actor.getRole() == UserRole.SPECIALIST;
         if (!isAdmin && !(allowSpecialist && isSpecialist)) {
             throw new BadRequestException("You do not have permission to handle moderation actions");
+        }
+    }
+
+    private void requireSpecialist(User actor) {
+        if (actor.getRole() != UserRole.SPECIALIST) {
+            throw new BadRequestException("Only specialists can reveal anonymous reporter identity");
         }
     }
 

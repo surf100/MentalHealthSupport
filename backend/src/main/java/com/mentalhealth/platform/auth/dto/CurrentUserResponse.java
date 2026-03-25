@@ -4,11 +4,13 @@ public class CurrentUserResponse {
 
     private String email;
     private String nickname;
+    private String displayName;
     private String role;
 
-    public CurrentUserResponse(String email, String nickname, String role) {
+    public CurrentUserResponse(String email, String nickname, String displayName, String role) {
         this.email = email;
         this.nickname = nickname;
+        this.displayName = displayName;
         this.role = role;
     }
 
@@ -18,6 +20,10 @@ public class CurrentUserResponse {
 
     public String getNickname() {
         return nickname;
+    }
+
+    public String getDisplayName() {
+        return displayName;
     }
 
     public String getRole() {

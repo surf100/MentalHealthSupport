@@ -115,9 +115,13 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidCredentialsException("User not found"));
 
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        String displayName = profile != null ? profile.getDisplayName() : null;
+
         return new CurrentUserResponse(
                 user.getEmail(),
                 user.getNickname(),
+                displayName,
                 user.getRole().name()
         );
     }

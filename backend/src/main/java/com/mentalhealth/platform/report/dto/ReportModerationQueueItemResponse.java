@@ -14,6 +14,7 @@ public class ReportModerationQueueItemResponse {
     private String reportStatus;
     private String reporterEmail;
     private boolean anonymous;
+    private boolean identityRevealed;
     private int riskScore;
     private double sentimentScore;
     private String riskLevel;
@@ -34,8 +35,11 @@ public class ReportModerationQueueItemResponse {
         dto.description = report.getDescription();
         dto.category = report.getCategory().name();
         dto.reportStatus = report.getStatus().name();
-        dto.reporterEmail = report.getUser().getEmail();
         dto.anonymous = report.isAnonymous();
+        dto.identityRevealed = report.isIdentityRevealedToSpecialist();
+        dto.reporterEmail = report.isAnonymous() && !report.isIdentityRevealedToSpecialist()
+                ? null
+                : report.getUser().getEmail();
         dto.riskScore = report.getRiskScore();
         dto.sentimentScore = report.getSentimentScore();
         dto.riskLevel = report.getRiskLevel().name();
@@ -58,6 +62,7 @@ public class ReportModerationQueueItemResponse {
     public String getReportStatus() { return reportStatus; }
     public String getReporterEmail() { return reporterEmail; }
     public boolean isAnonymous() { return anonymous; }
+    public boolean isIdentityRevealed() { return identityRevealed; }
     public int getRiskScore() { return riskScore; }
     public double getSentimentScore() { return sentimentScore; }
     public String getRiskLevel() { return riskLevel; }

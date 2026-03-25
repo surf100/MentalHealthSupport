@@ -17,6 +17,7 @@ export interface AuthResponse {
   token: string;
   email: string;
   nickname: string;
+  displayName?: string | null;
   role: string;
 }
 
@@ -76,6 +77,7 @@ export async function signIn(data: SignInRequest): Promise<AuthResponse> {
 export interface CurrentUserResponse {
   email: string;
   nickname: string;
+  displayName: string | null;
   role: string;
 }
 

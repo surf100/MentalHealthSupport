@@ -18,6 +18,8 @@ import {
   updateMyProfile,
   type ProfileResponse,
 } from "../api/profile-api";
+import { useAuth } from "../auth/auth-context";
+import { applyThemePreference } from "../lib/theme";
 
 function formatMemberSince(dateString: string) {
   const date = new Date(dateString);
@@ -30,6 +32,7 @@ function formatMemberSince(dateString: string) {
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const { user, setUser } = useAuth();
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +62,7 @@ export function ProfilePage() {
         setNotificationsEnabled(data.notificationsEnabled);
         setThemePreference(data.themePreference);
         setLanguagePreference(data.languagePreference);
+        applyThemePreference(data.themePreference);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -120,6 +124,13 @@ export function ProfilePage() {
       setNotificationsEnabled(updated.notificationsEnabled);
       setThemePreference(updated.themePreference);
       setLanguagePreference(updated.languagePreference);
+      applyThemePreference(updated.themePreference);
+      if (user) {
+        setUser({
+          ...user,
+          displayName: updated.displayName,
+        });
+      }
       setIsEditing(false);
       setSuccessMessage("Profile updated successfully");
     } catch (err) {

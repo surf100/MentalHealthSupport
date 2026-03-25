@@ -5,6 +5,7 @@ import { getToken, removeToken, saveToken } from "../lib/auth-storage";
 export interface CurrentUser {
   email: string;
   nickname: string;
+  displayName?: string | null;
   role: string;
 }
 

@@ -12,6 +12,7 @@ import {
   escalateFlaggedReport,
   getForumModerationPosts,
   getReportModerationReports,
+  revealReportIdentity,
   reviewFlaggedForumPost,
   reviewFlaggedReport,
   type ForumModerationQueueItemResponse,
@@ -137,6 +138,7 @@ export function AdminForumRiskPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const isSpecialist = user?.role === "SPECIALIST";
   const canUseSpecialistQueue = user?.role === "ADMIN" || user?.role === "SPECIALIST";
   const [queueMode, setQueueMode] = useState<QueueMode>(
     user?.role === "SPECIALIST" ? "SPECIALIST" : "MODERATOR"
@@ -150,6 +152,8 @@ export function AdminForumRiskPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [responseDrafts, setResponseDrafts] = useState<Record<number, string>>({});
+  const [pendingRevealReport, setPendingRevealReport] =
+    useState<ReportModerationQueueItemResponse | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -273,9 +277,61 @@ export function AdminForumRiskPage() {
     }
   }
 
+  async function runRevealIdentity(reportId: number) {
+    const actionKey = `report-reveal-${reportId}`;
+    try {
+      setActionLoading(actionKey);
+      const updated = await revealReportIdentity(reportId);
+      setReports((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setPendingRevealReport(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reveal reporter identity");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
+
+      {pendingRevealReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-600">
+              Confirm identity reveal
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-gray-900">
+              Reveal anonymous reporter identity?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              This action exposes the reporter email for case {pendingRevealReport.reference}.
+              Only continue if identity access is necessary for specialist intervention on an
+              escalated safety case.
+            </p>
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              This action is sensitive and should only be used when anonymous handling is no
+              longer sufficient for protecting the user.
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setPendingRevealReport(null)}
+                disabled={actionLoading === `report-reveal-${pendingRevealReport.id}`}
+                className="rounded-lg border px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => runRevealIdentity(pendingRevealReport.id)}
+                disabled={actionLoading === `report-reveal-${pendingRevealReport.id}`}
+                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Confirm Reveal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-8 py-12">
@@ -426,6 +482,12 @@ export function AdminForumRiskPage() {
                 filteredItems.map((item) => {
                   const report = item as ReportModerationQueueItemResponse;
                   const actionKey = `report-${report.id}`;
+                  const revealActionKey = `report-reveal-${report.id}`;
+                  const canRevealIdentity =
+                    isSpecialist &&
+                    report.anonymous &&
+                    !report.identityRevealed &&
+                    report.moderationStatus === "ESCALATED_TO_SPECIALIST";
                   return (
                     <article key={report.id} className="border rounded-2xl p-6">
                       <div className="flex items-start justify-between gap-6 mb-4">
@@ -486,12 +548,33 @@ export function AdminForumRiskPage() {
                               <UserRound className="w-4 h-4 text-gray-500" />
                               <h3 className="font-semibold">Reporter</h3>
                             </div>
-                            <p className="text-sm font-medium text-gray-900">{report.reporterEmail}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {report.reporterEmail ?? "Identity hidden"}
+                            </p>
                             <p className="text-xs text-gray-500 mt-3">
                               {report.anonymous
-                                ? "Submitted anonymously to moderators"
+                                ? report.identityRevealed
+                                  ? "The anonymous reporter was revealed to a specialist for this escalated case."
+                                  : "This report stays anonymous unless a specialist reveals it during escalated review."
                                 : "Reporter identity is visible in the moderation workflow"}
                             </p>
+                            {canRevealIdentity && (
+                              <button
+                                onClick={() => setPendingRevealReport(report)}
+                                disabled={actionLoading === revealActionKey}
+                                className="mt-4 w-full border border-purple-200 bg-purple-50 text-purple-700 py-2.5 rounded-lg text-sm hover:bg-purple-100 disabled:opacity-50"
+                              >
+                                Reveal Identity to Specialist
+                              </button>
+                            )}
+                            {!isSpecialist &&
+                              report.anonymous &&
+                              report.moderationStatus === "ESCALATED_TO_SPECIALIST" &&
+                              !report.identityRevealed && (
+                                <p className="text-xs text-gray-500 mt-3">
+                                  Only specialists can reveal anonymous identity at this stage.
+                                </p>
+                              )}
                           </div>
 
                           <div className="border rounded-xl p-4">

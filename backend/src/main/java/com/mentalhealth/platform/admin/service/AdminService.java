@@ -43,6 +43,8 @@ public interface AdminService {
 
     ReportModerationQueueItemResponse escalateFlaggedReport(String actorEmail, Long reportId);
 
+    ReportModerationQueueItemResponse revealAnonymousReportIdentity(String actorEmail, Long reportId);
+
     ReportModerationQueueItemResponse addSpecialistResponse(
             String actorEmail,
             Long reportId,

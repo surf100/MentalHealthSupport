@@ -142,8 +142,9 @@ export type ReportModerationQueueItemResponse = {
   description: string;
   category: string;
   reportStatus: "SUBMITTED" | "UNDER_REVIEW" | "RESOLVED";
-  reporterEmail: string;
+  reporterEmail: string | null;
   anonymous: boolean;
+  identityRevealed: boolean;
   riskScore: number;
   sentimentScore: number;
   riskLevel: ForumRiskLevel;
@@ -301,6 +302,16 @@ export async function addSpecialistResponse(
     method: "PUT",
     headers: authHeaders(),
     body: JSON.stringify({ message } satisfies SpecialistResponseRequest),
+  });
+  return handleResponse<ReportModerationQueueItemResponse>(response);
+}
+
+export async function revealReportIdentity(
+  id: number
+): Promise<ReportModerationQueueItemResponse> {
+  const response = await fetch(`${ADMIN_API_BASE_URL}/report-risk/reports/${id}/reveal-identity`, {
+    method: "PUT",
+    headers: authHeaders(),
   });
   return handleResponse<ReportModerationQueueItemResponse>(response);
 }

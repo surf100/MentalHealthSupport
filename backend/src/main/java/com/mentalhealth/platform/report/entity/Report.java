@@ -81,6 +81,12 @@ public class Report {
     @Column(name = "specialist_referred_at")
     private LocalDateTime specialistReferredAt;
 
+    @Column(name = "identity_revealed_to_specialist", nullable = false)
+    private boolean identityRevealedToSpecialist = false;
+
+    @Column(name = "identity_revealed_at")
+    private LocalDateTime identityRevealedAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -122,6 +128,8 @@ public class Report {
     public LocalDateTime getAnalyzedAt() { return analyzedAt; }
     public LocalDateTime getReviewedAt() { return reviewedAt; }
     public LocalDateTime getSpecialistReferredAt() { return specialistReferredAt; }
+    public boolean isIdentityRevealedToSpecialist() { return identityRevealedToSpecialist; }
+    public LocalDateTime getIdentityRevealedAt() { return identityRevealedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -142,6 +150,8 @@ public class Report {
     public void setAnalyzedAt(LocalDateTime analyzedAt) { this.analyzedAt = analyzedAt; }
     public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
     public void setSpecialistReferredAt(LocalDateTime specialistReferredAt) { this.specialistReferredAt = specialistReferredAt; }
+    public void setIdentityRevealedToSpecialist(boolean identityRevealedToSpecialist) { this.identityRevealedToSpecialist = identityRevealedToSpecialist; }
+    public void setIdentityRevealedAt(LocalDateTime identityRevealedAt) { this.identityRevealedAt = identityRevealedAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

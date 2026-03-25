@@ -29,12 +29,13 @@ export function SignInPage() {
       });
 
       login(response.token, {
-      email: response.email,
-      nickname: response.nickname,
-      role: response.role,
-    });
+        email: response.email,
+        nickname: response.nickname,
+        displayName: response.displayName ?? null,
+        role: response.role,
+      });
 
-navigate("/dashboard");
+      navigate("/dashboard");
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

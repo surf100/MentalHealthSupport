@@ -8,6 +8,7 @@ export function Header() {
   const { isAuthenticated, user, logout } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const canAccessModerationQueue = user?.role === "ADMIN" || user?.role === "SPECIALIST";
+  const displayUserName = user?.displayName?.trim() || user?.nickname;
 
   const handleLogout = () => {
     logout();
@@ -93,7 +94,7 @@ export function Header() {
                 onClick={() => navigate("/profile")}
                 className="text-sm text-gray-700 hover:text-gray-900"
               >
-                {user?.nickname ? `Profile (${user.nickname})` : "Profile"}
+                {displayUserName ? `Profile (${displayUserName})` : "Profile"}
               </button>
 
               <button

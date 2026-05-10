@@ -2,7 +2,7 @@ import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { ArrowRight, BookOpen, LifeBuoy, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 
 type Category =
   | "All Resources"

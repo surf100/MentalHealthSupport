@@ -1,6 +1,6 @@
 import { Header } from "../components/header";
 import { Footer } from "../components/footer";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 
 export function ReportSubmittedPage() {

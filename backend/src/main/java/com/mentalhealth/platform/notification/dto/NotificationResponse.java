@@ -1,8 +1,9 @@
 package com.mentalhealth.platform.notification.dto;
 
-import com.mentalhealth.platform.notification.entity.NotificationType;
-
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mentalhealth.platform.notification.entity.NotificationType;
 
 public class NotificationResponse {
 
@@ -34,6 +35,7 @@ public class NotificationResponse {
 
     public NotificationType getType() { return type; }
 
+    @JsonProperty("isRead")
     public boolean isRead() { return isRead; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }

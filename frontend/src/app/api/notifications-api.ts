@@ -93,3 +93,26 @@ export async function markAllNotificationsAsRead(): Promise<void> {
     await parseError(response);
   }
 }
+
+// ── ADD THIS FUNCTION to notifications-api.ts ──────────────────────────────
+// Place it next to markAllNotificationsAsRead
+
+export async function markNotificationsAsReadByType(
+  type: BackendNotificationType
+): Promise<void> {
+  const token = getToken();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/notifications/read-by-type?type=${type}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to mark ${type} notifications as read`);
+  }
+}

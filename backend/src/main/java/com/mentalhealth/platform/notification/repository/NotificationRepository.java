@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.mentalhealth.platform.notification.entity.Notification;
+import com.mentalhealth.platform.notification.entity.NotificationType;
 import com.mentalhealth.platform.user.entity.User;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
@@ -18,11 +19,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     List<Notification> findByUserOrderByCreatedAtDesc(User user);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE Notification n
         SET n.isRead = true
         WHERE n.user = :user AND n.isRead = false
     """)
     int markAllAsReadByUser(@Param("user") User user);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE Notification n
+        SET n.isRead = true
+        WHERE n.user = :user AND n.type = :type AND n.isRead = false
+    """)
+    int markAsReadByUserAndType(@Param("user") User user, @Param("type") NotificationType type);
 }

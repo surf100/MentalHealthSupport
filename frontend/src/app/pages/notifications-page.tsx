@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getNotifications,
   markAllNotificationsAsRead,
+  markNotificationsAsReadByType,
   type BackendNotificationType,
   type NotificationResponse,
 } from "../api/notifications-api";
@@ -41,6 +42,16 @@ const filters: NotificationFilter[] = [
   "Safety",
 ];
 
+// Maps filter tab → backend NotificationType(s) to auto-mark as read
+const FILTER_TO_TYPES: Partial<
+  Record<NotificationFilter, BackendNotificationType[]>
+> = {
+  Reports: ["REPORT_UPDATE"],
+  Forum: ["FORUM_REPLY"],
+  Achievements: ["ACHIEVEMENT"],
+  Safety: ["WARNING", "SYSTEM"],
+};
+
 function mapBackendTypeToFilter(
   type: BackendNotificationType
 ): Exclude<NotificationFilter, "All"> {
@@ -69,10 +80,12 @@ function formatRelativeTime(createdAt: string) {
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffMinutes < 1) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  if (diffMinutes < 60)
+    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays === 1) return "Yesterday";
@@ -156,30 +169,55 @@ export function NotificationsPage() {
     };
   }, []);
 
-  async function handleMarkAllAsRead() {
-  try {
-    setIsMarkingAllAsRead(true);
-    setActionError(null);
+  // Auto-mark as read when switching to a specific filter tab
+  useEffect(() => {
+    if (selectedFilter === "All" || isLoading) return;
 
-    await markAllNotificationsAsRead();
+    const types = FILTER_TO_TYPES[selectedFilter];
+    if (!types) return;
 
-    setNotifications((prev) =>
-      prev.map((item) => ({
-        ...item,
-        isRead: true,
-      }))
+    // Check if there are actually unread notifications of these types
+    const hasUnread = notifications.some(
+      (n) => !n.isRead && types.includes(n.type)
     );
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to mark notifications as read";
+    if (!hasUnread) return;
 
-    setActionError(message);
-  } finally {
-    setIsMarkingAllAsRead(false);
+    // Mark on backend (fire and forget — update local state optimistically)
+    Promise.all(types.map((type) => markNotificationsAsReadByType(type))).catch(
+      () => {
+        // Silently ignore — worst case the badge count is slightly off
+      }
+    );
+
+    // Optimistically update local state
+    setNotifications((prev) =>
+      prev.map((n) =>
+        types.includes(n.type) ? { ...n, isRead: true } : n
+      )
+    );
+  }, [selectedFilter, isLoading]);
+
+  async function handleMarkAllAsRead() {
+    try {
+      setIsMarkingAllAsRead(true);
+      setActionError(null);
+
+      await markAllNotificationsAsRead();
+
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, isRead: true }))
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to mark notifications as read";
+
+      setActionError(message);
+    } finally {
+      setIsMarkingAllAsRead(false);
+    }
   }
-}
 
   const filteredNotifications = useMemo(() => {
     if (selectedFilter === "All") return notifications;
@@ -203,20 +241,22 @@ export function NotificationsPage() {
               </p>
             </div>
 
-            <button
-  onClick={handleMarkAllAsRead}
-  disabled={isMarkingAllAsRead || unreadCount === 0}
-  className={`border px-5 py-3 rounded-md inline-flex items-center gap-2 text-sm ${
-    isMarkingAllAsRead || unreadCount === 0
-      ? "text-gray-400 cursor-not-allowed"
-      : "hover:bg-gray-50 text-gray-700"
-  }`}
->
-  {isMarkingAllAsRead ? "Marking..." : "Mark all as read"}
-</button>
-{actionError && (
-  <p className="mt-3 text-sm text-red-600">{actionError}</p>
-)}
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={handleMarkAllAsRead}
+                disabled={isMarkingAllAsRead || unreadCount === 0}
+                className={`border px-5 py-3 rounded-md inline-flex items-center gap-2 text-sm ${
+                  isMarkingAllAsRead || unreadCount === 0
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "hover:bg-gray-50 text-gray-700"
+                }`}
+              >
+                {isMarkingAllAsRead ? "Marking..." : "Mark all as read"}
+              </button>
+              {actionError && (
+                <p className="text-sm text-red-600">{actionError}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-12 gap-8">
@@ -225,19 +265,33 @@ export function NotificationsPage() {
                 <h2 className="font-semibold mb-4">Filter</h2>
 
                 <div className="space-y-2">
-                  {filters.map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setSelectedFilter(filter)}
-                      className={`block w-full text-left px-4 py-3 rounded-md text-sm ${
-                        selectedFilter === filter
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      {filter}
-                    </button>
-                  ))}
+                  {filters.map((filter) => {
+                    const types = FILTER_TO_TYPES[filter];
+                    const unreadInFilter = types
+                      ? notifications.filter(
+                          (n) => !n.isRead && types.includes(n.type)
+                        ).length
+                      : 0;
+
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setSelectedFilter(filter)}
+                        className={`flex w-full items-center justify-between px-4 py-3 rounded-md text-sm ${
+                          selectedFilter === filter
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <span>{filter}</span>
+                        {unreadInFilter > 0 && (
+                          <span className="ml-2 min-w-[20px] h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center px-1">
+                            {unreadInFilter}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 rounded-lg bg-gray-50 p-4">

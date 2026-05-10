@@ -2,7 +2,7 @@ import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { AlertCircle, ArrowLeft, Flag, Heart, MessageSquare, Send } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getPostById,
   addComment,

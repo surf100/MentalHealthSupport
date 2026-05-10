@@ -1,18 +1,33 @@
 package com.mentalhealth.platform.forum.service;
 
-import com.mentalhealth.platform.common.exception.BadRequestException;
-import com.mentalhealth.platform.forum.dto.*;
-import com.mentalhealth.platform.forum.entity.*;
-import com.mentalhealth.platform.forum.event.ForumPostCreatedEvent;
-import com.mentalhealth.platform.forum.repository.*;
-import com.mentalhealth.platform.user.entity.User;
-import com.mentalhealth.platform.user.repository.UserRepository;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import com.mentalhealth.platform.common.exception.BadRequestException;
+import com.mentalhealth.platform.forum.dto.CreateCommentRequest;
+import com.mentalhealth.platform.forum.dto.CreatePostRequest;
+import com.mentalhealth.platform.forum.dto.ForumCommentResponse;
+import com.mentalhealth.platform.forum.dto.ForumPostDetailResponse;
+import com.mentalhealth.platform.forum.dto.ForumPostResponse;
+import com.mentalhealth.platform.forum.dto.LikeResponse;
+import com.mentalhealth.platform.forum.entity.ForumCategory;
+import com.mentalhealth.platform.forum.entity.ForumComment;
+import com.mentalhealth.platform.forum.entity.ForumPost;
+import com.mentalhealth.platform.forum.entity.ForumPostLike;
+import com.mentalhealth.platform.forum.entity.ForumPostModerationStatus;
+import com.mentalhealth.platform.forum.event.ForumPostCreatedEvent;
+import com.mentalhealth.platform.forum.repository.ForumCommentRepository;
+import com.mentalhealth.platform.forum.repository.ForumPostLikeRepository;
+import com.mentalhealth.platform.forum.repository.ForumPostRepository;
+import com.mentalhealth.platform.notification.entity.Notification;
+import com.mentalhealth.platform.notification.entity.NotificationType;
+import com.mentalhealth.platform.notification.repository.NotificationRepository;
+import com.mentalhealth.platform.user.entity.User;
+import com.mentalhealth.platform.user.repository.UserRepository;
 
 @Service
 public class ForumServiceImpl implements ForumService {
@@ -22,19 +37,22 @@ public class ForumServiceImpl implements ForumService {
     private final ForumPostLikeRepository likeRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationRepository notificationRepository;
 
     public ForumServiceImpl(
             ForumPostRepository postRepository,
             ForumCommentRepository commentRepository,
             ForumPostLikeRepository likeRepository,
             UserRepository userRepository,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            NotificationRepository notificationRepository
     ) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.likeRepository = likeRepository;
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -89,22 +107,44 @@ public class ForumServiceImpl implements ForumService {
 
         ForumPost saved = postRepository.save(post);
         eventPublisher.publishEvent(new ForumPostCreatedEvent(saved.getId()));
+
+        // Notify the author that their post was published
+        Notification notification = new Notification();
+        notification.setUser(user);
+        notification.setType(NotificationType.FORUM_REPLY);
+        notification.setTitle("Post published");
+        notification.setMessage("Your post \"" + saved.getTitle() + "\" is now live in the forum.");
+        notificationRepository.save(notification);
+
         return ForumPostResponse.from(saved, 0, 0, false);
     }
 
     @Override
     @Transactional
     public ForumCommentResponse addComment(String email, Long postId, CreateCommentRequest request) {
-        User user = getUserByEmail(email);
+        User commenter = getUserByEmail(email);
         ForumPost post = getPostOrThrow(postId);
 
         ForumComment comment = new ForumComment();
         comment.setPost(post);
-        comment.setUser(user);
+        comment.setUser(commenter);
         comment.setContent(request.getContent().trim());
         comment.setAnonymous(request.isAnonymous());
 
-        return ForumCommentResponse.from(commentRepository.save(comment));
+        ForumCommentResponse response = ForumCommentResponse.from(commentRepository.save(comment));
+
+        // Notify the post author if someone else commented
+        User postAuthor = post.getUser();
+        if (!postAuthor.getId().equals(commenter.getId())) {
+            Notification notification = new Notification();
+            notification.setUser(postAuthor);
+            notification.setType(NotificationType.FORUM_REPLY);
+            notification.setTitle("New comment on your post");
+            notification.setMessage("Someone replied to your post \"" + post.getTitle() + "\".");
+            notificationRepository.save(notification);
+        }
+
+        return response;
     }
 
     @Override
@@ -122,6 +162,18 @@ public class ForumServiceImpl implements ForumService {
         } else {
             likeRepository.save(new ForumPostLike(post, user));
             long count = likeRepository.countByPost(post);
+
+            // Notify the post author if someone else liked their post
+            User postAuthor = post.getUser();
+            if (!postAuthor.getId().equals(user.getId())) {
+                Notification notification = new Notification();
+                notification.setUser(postAuthor);
+                notification.setType(NotificationType.FORUM_REPLY);
+                notification.setTitle("Someone liked your post");
+                notification.setMessage("Your post \"" + post.getTitle() + "\" received a new like.");
+                notificationRepository.save(notification);
+            }
+
             return new LikeResponse(true, count);
         }
     }

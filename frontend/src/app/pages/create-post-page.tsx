@@ -2,7 +2,7 @@ import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { Info } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { createPost, type ForumCategory } from "../api/forum-api";
 
 const CATEGORIES: { value: ForumCategory; label: string }[] = [

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowUpRight, Brain, FileText, Search, ShieldAlert, UserRound } from "lucide-react";
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";

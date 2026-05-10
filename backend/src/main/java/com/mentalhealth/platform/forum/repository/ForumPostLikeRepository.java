@@ -14,5 +14,7 @@ public interface ForumPostLikeRepository extends JpaRepository<ForumPostLike, Lo
 
     long countByPost(ForumPost post);
 
+    long countByUser(User user);
+
     boolean existsByPostAndUser(ForumPost post, User user);
 }

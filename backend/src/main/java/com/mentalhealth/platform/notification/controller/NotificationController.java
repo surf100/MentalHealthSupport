@@ -7,9 +7,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mentalhealth.platform.notification.dto.NotificationResponse;
+import com.mentalhealth.platform.notification.entity.NotificationType;
 import com.mentalhealth.platform.notification.service.NotificationService;
 
 @RestController
@@ -24,18 +26,20 @@ public class NotificationController {
 
     @GetMapping
     public List<NotificationResponse> getNotifications(Authentication authentication) {
-
-        String email = authentication.getName();
-        System.out.println("GET /api/notifications auth name = " + authentication.getName());
-        return notificationService.getUserNotifications(email);
+        return notificationService.getUserNotifications(authentication.getName());
     }
-        
+
     @PatchMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
-        String email = authentication.getName();
-        notificationService.markAllAsRead(email);
-        System.out.println("PATCH /api/notifications/read-all auth name = " + authentication.getName());
+        notificationService.markAllAsRead(authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/read-by-type")
+    public ResponseEntity<Void> markAsReadByType(
+            @RequestParam NotificationType type,
+            Authentication authentication) {
+        notificationService.markAsReadByType(authentication.getName(), type);
+        return ResponseEntity.noContent().build();
+    }
 }

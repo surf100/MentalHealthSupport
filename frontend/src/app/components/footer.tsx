@@ -1,5 +1,5 @@
 import { Logo } from "./logo";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 
 export function Footer() {
   const navigate = useNavigate();

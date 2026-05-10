@@ -2,12 +2,15 @@ package com.mentalhealth.platform.report.service;
 
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.ApplicationEventPublisher;
 
 import com.mentalhealth.platform.common.exception.BadRequestException;
 import com.mentalhealth.platform.forum.entity.ForumPostModerationStatus;
+import com.mentalhealth.platform.notification.entity.Notification;
+import com.mentalhealth.platform.notification.entity.NotificationType;
+import com.mentalhealth.platform.notification.repository.NotificationRepository;
 import com.mentalhealth.platform.report.dto.CreateReportRequest;
 import com.mentalhealth.platform.report.dto.ReportDetailResponse;
 import com.mentalhealth.platform.report.dto.ReportResponse;
@@ -28,17 +31,20 @@ public class ReportServiceImpl implements ReportService {
     private final ReportStatusHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationRepository notificationRepository;
 
     public ReportServiceImpl(
             ReportRepository reportRepository,
             ReportStatusHistoryRepository historyRepository,
             UserRepository userRepository,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            NotificationRepository notificationRepository
     ) {
         this.reportRepository = reportRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -66,6 +72,16 @@ public class ReportServiceImpl implements ReportService {
         );
         historyRepository.save(initial);
         eventPublisher.publishEvent(new ReportCreatedEvent(saved.getId()));
+
+        // Notify the user that their report was received
+        Notification notification = new Notification();
+        notification.setUser(user);
+        notification.setType(NotificationType.REPORT_UPDATE);
+        notification.setTitle("Report submitted successfully");
+        notification.setMessage(
+                "Your report RS-" + saved.getId() + " has been received and is under review."
+        );
+        notificationRepository.save(notification);
 
         return ReportResponse.from(saved);
     }

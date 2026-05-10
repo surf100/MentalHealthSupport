@@ -1,5 +1,5 @@
 import { Logo } from "./logo";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
 import { Settings } from "lucide-react";
 

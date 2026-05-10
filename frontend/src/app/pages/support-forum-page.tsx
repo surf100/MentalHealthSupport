@@ -2,7 +2,7 @@ import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { AlertCircle, Flag, MessageSquare, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import {
   getPosts,
   type ForumCategory,

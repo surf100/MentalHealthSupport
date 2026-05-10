@@ -1,6 +1,20 @@
 package com.mentalhealth.platform.admin.service;
 
-import com.mentalhealth.platform.admin.dto.*;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.mentalhealth.platform.admin.dto.AdminAnalyticsResponse;
+import com.mentalhealth.platform.admin.dto.AdminStatsResponse;
+import com.mentalhealth.platform.admin.dto.AdminUserResponse;
+import com.mentalhealth.platform.admin.dto.AuditLogResponse;
+import com.mentalhealth.platform.admin.dto.ChangeRoleRequest;
+import com.mentalhealth.platform.admin.dto.SpecialistResponseRequest;
 import com.mentalhealth.platform.admin.entity.AuditAction;
 import com.mentalhealth.platform.admin.entity.AuditLog;
 import com.mentalhealth.platform.admin.repository.AuditLogRepository;
@@ -24,14 +38,6 @@ import com.mentalhealth.platform.user.entity.User;
 import com.mentalhealth.platform.user.enums.UserRole;
 import com.mentalhealth.platform.user.enums.UserStatus;
 import com.mentalhealth.platform.user.repository.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class AdminServiceImpl implements AdminService {
@@ -87,7 +93,6 @@ public class AdminServiceImpl implements AdminService {
         List<Report> allReports = reportRepository.findAll();
         List<User> allUsers = userRepository.findAll();
 
-        // ── Reports by day (last 30 days) ─────────────────────────────────────
         Map<String, Long> reportDayMap = allReports.stream()
                 .collect(Collectors.groupingBy(
                         r -> r.getCreatedAt().format(DAY_FORMAT),
@@ -99,7 +104,6 @@ public class AdminServiceImpl implements AdminService {
                 .map(e -> new AdminAnalyticsResponse.DailyReportCount(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
 
-        // ── Reports by category ───────────────────────────────────────────────
         Map<ReportCategory, Long> categoryMap = allReports.stream()
                 .collect(Collectors.groupingBy(Report::getCategory, Collectors.counting()));
 
@@ -111,7 +115,6 @@ public class AdminServiceImpl implements AdminService {
                         ))
                         .collect(Collectors.toList());
 
-        // ── Reports by status ─────────────────────────────────────────────────
         Map<ReportStatus, Long> statusMap = allReports.stream()
                 .collect(Collectors.groupingBy(Report::getStatus, Collectors.counting()));
 
@@ -123,7 +126,6 @@ public class AdminServiceImpl implements AdminService {
                         ))
                         .collect(Collectors.toList());
 
-        // ── User registrations by day ─────────────────────────────────────────
         Map<String, Long> regDayMap = allUsers.stream()
                 .collect(Collectors.groupingBy(
                         u -> u.getCreatedAt().format(DAY_FORMAT),
@@ -135,21 +137,15 @@ public class AdminServiceImpl implements AdminService {
                 .map(e -> new AdminAnalyticsResponse.DailyReportCount(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
 
-        // ── Summary stats ─────────────────────────────────────────────────────
         long totalReports = allReports.size();
-
-        // Critical = SAFETY category or SUBMITTED status with MENTAL_HEALTH
-        // (will be replaced by sentiment score once teammate integrates it)
         long criticalReports = allReports.stream()
                 .filter(r -> r.getCategory() == ReportCategory.SAFETY ||
                              r.getCategory() == ReportCategory.HARASSMENT)
                 .count();
-
         long pendingReports = allReports.stream()
                 .filter(r -> r.getStatus() == ReportStatus.SUBMITTED)
                 .count();
-
-        long totalUsers = allUsers.size();
+        long totalUsers2 = allUsers.size();
         long totalForumPosts = forumPostRepository.count();
         long flaggedForumPosts = forumPostRepository.countByFlaggedForReviewTrue();
         long pendingForumModeration = forumPostRepository.countByModerationStatus(ForumPostModerationStatus.FLAGGED);
@@ -159,19 +155,10 @@ public class AdminServiceImpl implements AdminService {
                 forumPostRepository.countByRiskLevelIn(List.of(ForumPostRiskLevel.HIGH, ForumPostRiskLevel.CRITICAL));
 
         return new AdminAnalyticsResponse(
-                reportsByDay,
-                reportsByCategory,
-                reportsByStatus,
-                registrationsByDay,
-                totalReports,
-                criticalReports,
-                pendingReports,
-                totalUsers,
-                totalForumPosts,
-                flaggedForumPosts,
-                pendingForumModeration,
-                specialistEscalations,
-                criticalForumPosts
+                reportsByDay, reportsByCategory, reportsByStatus, registrationsByDay,
+                totalReports, criticalReports, pendingReports, totalUsers2,
+                totalForumPosts, flaggedForumPosts, pendingForumModeration,
+                specialistEscalations, criticalForumPosts
         );
     }
 
@@ -182,24 +169,17 @@ public class AdminServiceImpl implements AdminService {
         requireAdmin(actor);
         User target = getUserById(targetUserId);
 
-        if (actor.getId().equals(target.getId())) {
+        if (actor.getId().equals(target.getId()))
             throw new BadRequestException("Admins cannot change their own role");
-        }
-
-        if (target.getRole() == request.getRole()) {
+        if (target.getRole() == request.getRole())
             throw new BadRequestException("User already has this role");
-        }
 
         String oldRole = target.getRole().name();
         target.setRole(request.getRole());
         userRepository.save(target);
 
-        auditLogRepository.save(new AuditLog(
-                actor,
-                AuditAction.ROLE_CHANGED,
-                target.getEmail(),
-                "Changed role from " + oldRole + " to " + request.getRole().name() + "."
-        ));
+        auditLogRepository.save(new AuditLog(actor, AuditAction.ROLE_CHANGED, target.getEmail(),
+                "Changed role from " + oldRole + " to " + request.getRole().name() + "."));
 
         return AdminUserResponse.from(target);
     }
@@ -211,23 +191,21 @@ public class AdminServiceImpl implements AdminService {
         requireAdmin(actor);
         User target = getUserById(targetUserId);
 
-        if (actor.getId().equals(target.getId())) {
+        if (actor.getId().equals(target.getId()))
             throw new BadRequestException("Admins cannot ban themselves");
-        }
-
-        if (target.getStatus() == UserStatus.BANNED) {
+        if (target.getStatus() == UserStatus.BANNED)
             throw new BadRequestException("User is already banned");
-        }
 
         target.setStatus(UserStatus.BANNED);
         userRepository.save(target);
 
-        auditLogRepository.save(new AuditLog(
-                actor,
-                AuditAction.USER_BANNED,
-                target.getEmail(),
-                "User account was restricted by admin."
-        ));
+        auditLogRepository.save(new AuditLog(actor, AuditAction.USER_BANNED, target.getEmail(),
+                "User account was restricted by admin."));
+
+        // Notify the banned user
+        saveNotification(target, NotificationType.WARNING,
+                "Your account has been suspended",
+                "Your account has been suspended by a platform administrator. Contact support if you believe this is a mistake.");
 
         return AdminUserResponse.from(target);
     }
@@ -239,19 +217,19 @@ public class AdminServiceImpl implements AdminService {
         requireAdmin(actor);
         User target = getUserById(targetUserId);
 
-        if (target.getStatus() != UserStatus.BANNED) {
+        if (target.getStatus() != UserStatus.BANNED)
             throw new BadRequestException("User is not banned");
-        }
 
         target.setStatus(UserStatus.ACTIVE);
         userRepository.save(target);
 
-        auditLogRepository.save(new AuditLog(
-                actor,
-                AuditAction.USER_UNBANNED,
-                target.getEmail(),
-                "User account restriction was lifted by admin."
-        ));
+        auditLogRepository.save(new AuditLog(actor, AuditAction.USER_UNBANNED, target.getEmail(),
+                "User account restriction was lifted by admin."));
+
+        // Notify the unbanned user
+        saveNotification(target, NotificationType.SYSTEM,
+                "Your account has been reinstated",
+                "Your account suspension has been lifted. You can now use the platform again.");
 
         return AdminUserResponse.from(target);
     }
@@ -286,76 +264,51 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public ForumModerationQueueItemResponse reviewFlaggedForumPost(String actorEmail, Long postId) {
-        return updateForumPostModerationStatus(
-                actorEmail,
-                postId,
-                ForumPostModerationStatus.REVIEWED,
-                AuditAction.FORUM_POST_REVIEWED,
-                "Reviewed flagged forum post"
-        );
+        return updateForumPostModerationStatus(actorEmail, postId,
+                ForumPostModerationStatus.REVIEWED, AuditAction.FORUM_POST_REVIEWED,
+                "Reviewed flagged forum post");
     }
 
     @Override
     @Transactional
     public ForumModerationQueueItemResponse dismissFlaggedForumPost(String actorEmail, Long postId) {
-        return updateForumPostModerationStatus(
-                actorEmail,
-                postId,
-                ForumPostModerationStatus.DISMISSED,
-                AuditAction.FORUM_POST_DISMISSED,
-                "Dismissed flagged forum post"
-        );
+        return updateForumPostModerationStatus(actorEmail, postId,
+                ForumPostModerationStatus.DISMISSED, AuditAction.FORUM_POST_DISMISSED,
+                "Dismissed flagged forum post");
     }
 
     @Override
     @Transactional
     public ForumModerationQueueItemResponse escalateFlaggedForumPost(String actorEmail, Long postId) {
-        return updateForumPostModerationStatus(
-                actorEmail,
-                postId,
+        return updateForumPostModerationStatus(actorEmail, postId,
                 ForumPostModerationStatus.ESCALATED_TO_SPECIALIST,
                 AuditAction.FORUM_POST_ESCALATED_TO_SPECIALIST,
-                "Escalated forum post to mental health specialists"
-        );
+                "Escalated forum post to mental health specialists");
     }
 
     @Override
     @Transactional
     public ReportModerationQueueItemResponse reviewFlaggedReport(String actorEmail, Long reportId) {
-        return updateReportModerationStatus(
-                actorEmail,
-                reportId,
-                ForumPostModerationStatus.REVIEWED,
-                AuditAction.REPORT_REVIEWED,
-                "Reviewed flagged report",
-                ReportStatus.UNDER_REVIEW
-        );
+        return updateReportModerationStatus(actorEmail, reportId,
+                ForumPostModerationStatus.REVIEWED, AuditAction.REPORT_REVIEWED,
+                "Reviewed flagged report", ReportStatus.UNDER_REVIEW);
     }
 
     @Override
     @Transactional
     public ReportModerationQueueItemResponse dismissFlaggedReport(String actorEmail, Long reportId) {
-        return updateReportModerationStatus(
-                actorEmail,
-                reportId,
-                ForumPostModerationStatus.DISMISSED,
-                AuditAction.REPORT_DISMISSED,
-                "Dismissed flagged report",
-                null
-        );
+        return updateReportModerationStatus(actorEmail, reportId,
+                ForumPostModerationStatus.DISMISSED, AuditAction.REPORT_DISMISSED,
+                "Dismissed flagged report", null);
     }
 
     @Override
     @Transactional
     public ReportModerationQueueItemResponse escalateFlaggedReport(String actorEmail, Long reportId) {
-        return updateReportModerationStatus(
-                actorEmail,
-                reportId,
+        return updateReportModerationStatus(actorEmail, reportId,
                 ForumPostModerationStatus.ESCALATED_TO_SPECIALIST,
                 AuditAction.REPORT_ESCALATED_TO_SPECIALIST,
-                "Escalated report to mental health specialists",
-                ReportStatus.UNDER_REVIEW
-        );
+                "Escalated report to mental health specialists", ReportStatus.UNDER_REVIEW);
     }
 
     @Override
@@ -365,47 +318,36 @@ public class AdminServiceImpl implements AdminService {
         requireSpecialist(actor);
 
         Report report = getReportById(reportId);
-        if (!report.isAnonymous()) {
+        if (!report.isAnonymous())
             throw new BadRequestException("Only anonymous reports can be de-anonymized");
-        }
-        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST)
             throw new BadRequestException("Only escalated specialist cases can reveal reporter identity");
-        }
-        if (report.isIdentityRevealedToSpecialist()) {
+        if (report.isIdentityRevealedToSpecialist())
             throw new BadRequestException("Reporter identity has already been revealed");
-        }
 
         report.setIdentityRevealedToSpecialist(true);
         report.setIdentityRevealedAt(java.time.LocalDateTime.now());
         report.setModerationNotes("Reporter identity was revealed to a specialist for an escalated case.");
         Report savedReport = reportRepository.save(report);
 
-        auditLogRepository.save(new AuditLog(
-                actor,
-                AuditAction.REPORT_IDENTITY_REVEALED,
+        auditLogRepository.save(new AuditLog(actor, AuditAction.REPORT_IDENTITY_REVEALED,
                 "report#" + savedReport.getId(),
-                "Revealed anonymous reporter identity for specialist review."
-        ));
+                "Revealed anonymous reporter identity for specialist review."));
 
         return ReportModerationQueueItemResponse.from(savedReport);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
     @Override
     @Transactional
     public ReportModerationQueueItemResponse addSpecialistResponse(
-            String actorEmail,
-            Long reportId,
-            SpecialistResponseRequest request
-    ) {
+            String actorEmail, Long reportId, SpecialistResponseRequest request) {
+
         User actor = getUserByEmail(actorEmail);
         requireModerator(actor, true);
 
         Report report = getReportById(reportId);
-        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+        if (report.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST)
             throw new BadRequestException("Only reports escalated to specialists can receive a specialist response");
-        }
 
         String message = request.getMessage().trim();
         report.setStatus(ReportStatus.RESOLVED);
@@ -414,27 +356,109 @@ public class AdminServiceImpl implements AdminService {
         Report savedReport = reportRepository.save(report);
 
         reportStatusHistoryRepository.save(new ReportStatusHistory(
-                savedReport,
-                ReportStatus.RESOLVED,
-                "Specialist response sent",
-                message
-        ));
+                savedReport, ReportStatus.RESOLVED, "Specialist response sent", message));
 
-        Notification notification = new Notification();
-        notification.setUser(savedReport.getUser());
-        notification.setType(NotificationType.REPORT_UPDATE);
-        notification.setTitle("A mental health specialist responded to your report");
-        notification.setMessage(
-                "A specialist added a response to report RS-" + savedReport.getId() + "."
-        );
-        notificationRepository.save(notification);
+        saveNotification(savedReport.getUser(), NotificationType.REPORT_UPDATE,
+                "A mental health specialist responded to your report",
+                "A specialist added a response to report RS-" + savedReport.getId() + ".");
 
-        auditLogRepository.save(new AuditLog(
-                actor,
-                AuditAction.REPORT_SPECIALIST_RESPONDED,
+        auditLogRepository.save(new AuditLog(actor, AuditAction.REPORT_SPECIALIST_RESPONDED,
                 "report#" + savedReport.getId(),
-                "Added specialist response for report submitted by " + savedReport.getUser().getEmail() + "."
-        ));
+                "Added specialist response for report submitted by " + savedReport.getUser().getEmail() + "."));
+
+        return ReportModerationQueueItemResponse.from(savedReport);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private void saveNotification(User user, NotificationType type, String title, String message) {
+        Notification n = new Notification();
+        n.setUser(user);
+        n.setType(type);
+        n.setTitle(title);
+        n.setMessage(message);
+        notificationRepository.save(n);
+    }
+
+    private ForumModerationQueueItemResponse updateForumPostModerationStatus(
+            String actorEmail, Long postId,
+            ForumPostModerationStatus status, AuditAction auditAction, String actionText) {
+
+        User actor = getUserByEmail(actorEmail);
+        requireModerator(actor, false);
+
+        ForumPost post = getForumPostById(postId);
+        post.setModerationStatus(status);
+        post.setFlaggedForReview(false);
+        post.setReviewedAt(java.time.LocalDateTime.now());
+        post.setModerationNotes(actionText + " at risk score " + post.getRiskScore() + "/100.");
+
+        if (status == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST)
+            post.setSpecialistReferredAt(java.time.LocalDateTime.now());
+
+        ForumPost savedPost = forumPostRepository.save(post);
+
+        auditLogRepository.save(new AuditLog(actor, auditAction,
+                "forum-post#" + savedPost.getId(),
+                actionText + " for user " + savedPost.getUser().getEmail() + "."));
+
+        // Notify the post author about moderation action
+        if (status == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+            saveNotification(savedPost.getUser(), NotificationType.WARNING,
+                    "Your post has been escalated for specialist review",
+                    "Your forum post \"" + savedPost.getTitle() + "\" has been escalated to a mental health specialist due to its content.");
+        } else if (status == ForumPostModerationStatus.DISMISSED) {
+            saveNotification(savedPost.getUser(), NotificationType.WARNING,
+                    "A safety flag on your post was reviewed",
+                    "A content flag on your forum post \"" + savedPost.getTitle() + "\" was reviewed and dismissed by a moderator.");
+        }
+
+        return ForumModerationQueueItemResponse.from(savedPost);
+    }
+
+    private ReportModerationQueueItemResponse updateReportModerationStatus(
+            String actorEmail, Long reportId,
+            ForumPostModerationStatus moderationStatus, AuditAction auditAction,
+            String actionText, ReportStatus reportStatus) {
+
+        User actor = getUserByEmail(actorEmail);
+        requireModerator(actor, false);
+
+        Report report = getReportById(reportId);
+        report.setModerationStatus(moderationStatus);
+        report.setFlaggedForReview(false);
+        report.setReviewedAt(java.time.LocalDateTime.now());
+        report.setModerationNotes(actionText + " at risk score " + report.getRiskScore() + "/100.");
+
+        if (moderationStatus == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST)
+            report.setSpecialistReferredAt(java.time.LocalDateTime.now());
+
+        if (reportStatus != null) {
+            report.setStatus(reportStatus);
+            reportStatusHistoryRepository.save(new ReportStatusHistory(
+                    report, reportStatus, actionText, actionText + " by a moderator."));
+        }
+
+        Report savedReport = reportRepository.save(report);
+
+        auditLogRepository.save(new AuditLog(actor, auditAction,
+                "report#" + savedReport.getId(),
+                actionText + " for report submitted by " + savedReport.getUser().getEmail() + "."));
+
+        // Notify the report author about moderation status change
+        if (moderationStatus == ForumPostModerationStatus.REVIEWED && reportStatus == ReportStatus.UNDER_REVIEW) {
+            saveNotification(savedReport.getUser(), NotificationType.REPORT_UPDATE,
+                    "Your report is now under review",
+                    "Report RS-" + savedReport.getId() + " is being reviewed by our moderation team.");
+        } else if (moderationStatus == ForumPostModerationStatus.DISMISSED) {
+            saveNotification(savedReport.getUser(), NotificationType.WARNING,
+                    "Your report was reviewed",
+                    "Report RS-" + savedReport.getId() + " was reviewed and closed by a moderator.");
+        } else if (moderationStatus == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
+            saveNotification(savedReport.getUser(), NotificationType.REPORT_UPDATE,
+                    "Your report has been escalated",
+                    "Report RS-" + savedReport.getId() + " has been escalated to a mental health specialist for further review.");
+        }
 
         return ReportModerationQueueItemResponse.from(savedReport);
     }
@@ -460,98 +484,20 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private void requireAdmin(User actor) {
-        if (actor.getRole() != UserRole.ADMIN) {
+        if (actor.getRole() != UserRole.ADMIN)
             throw new BadRequestException("Only admins can manage user access");
-        }
     }
 
     private void requireModerator(User actor, boolean allowSpecialist) {
         boolean isAdmin = actor.getRole() == UserRole.ADMIN;
         boolean isSpecialist = actor.getRole() == UserRole.SPECIALIST;
-        if (!isAdmin && !(allowSpecialist && isSpecialist)) {
+        if (!isAdmin && !(allowSpecialist && isSpecialist))
             throw new BadRequestException("You do not have permission to handle moderation actions");
-        }
     }
 
     private void requireSpecialist(User actor) {
-        if (actor.getRole() != UserRole.SPECIALIST) {
+        if (actor.getRole() != UserRole.SPECIALIST)
             throw new BadRequestException("Only specialists can reveal anonymous reporter identity");
-        }
-    }
-
-    private ForumModerationQueueItemResponse updateForumPostModerationStatus(
-            String actorEmail,
-            Long postId,
-            ForumPostModerationStatus status,
-            AuditAction auditAction,
-            String actionText
-    ) {
-        User actor = getUserByEmail(actorEmail);
-        requireModerator(actor, false);
-
-        ForumPost post = getForumPostById(postId);
-        post.setModerationStatus(status);
-        post.setFlaggedForReview(false);
-        post.setReviewedAt(java.time.LocalDateTime.now());
-        post.setModerationNotes(actionText + " at risk score " + post.getRiskScore() + "/100.");
-
-        if (status == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
-            post.setSpecialistReferredAt(java.time.LocalDateTime.now());
-        }
-
-        ForumPost savedPost = forumPostRepository.save(post);
-
-        auditLogRepository.save(new AuditLog(
-                actor,
-                auditAction,
-                "forum-post#" + savedPost.getId(),
-                actionText + " for user " + savedPost.getUser().getEmail() + "."
-        ));
-
-        return ForumModerationQueueItemResponse.from(savedPost);
-    }
-
-    private ReportModerationQueueItemResponse updateReportModerationStatus(
-            String actorEmail,
-            Long reportId,
-            ForumPostModerationStatus moderationStatus,
-            AuditAction auditAction,
-            String actionText,
-            ReportStatus reportStatus
-    ) {
-        User actor = getUserByEmail(actorEmail);
-        requireModerator(actor, false);
-
-        Report report = getReportById(reportId);
-        report.setModerationStatus(moderationStatus);
-        report.setFlaggedForReview(false);
-        report.setReviewedAt(java.time.LocalDateTime.now());
-        report.setModerationNotes(actionText + " at risk score " + report.getRiskScore() + "/100.");
-
-        if (moderationStatus == ForumPostModerationStatus.ESCALATED_TO_SPECIALIST) {
-            report.setSpecialistReferredAt(java.time.LocalDateTime.now());
-        }
-
-        if (reportStatus != null) {
-            report.setStatus(reportStatus);
-            reportStatusHistoryRepository.save(new ReportStatusHistory(
-                    report,
-                    reportStatus,
-                    actionText,
-                    actionText + " by a moderator."
-            ));
-        }
-
-        Report savedReport = reportRepository.save(report);
-
-        auditLogRepository.save(new AuditLog(
-                actor,
-                auditAction,
-                "report#" + savedReport.getId(),
-                actionText + " for report submitted by " + savedReport.getUser().getEmail() + "."
-        ));
-
-        return ReportModerationQueueItemResponse.from(savedReport);
     }
 
     private String formatCategory(String raw) {

@@ -8,7 +8,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router-dom";
 
 type Article = {
   id: number;

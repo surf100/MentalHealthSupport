@@ -9,7 +9,7 @@ import {
   Trophy,
   User,
 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getDashboard, type DashboardResponse } from "../api/dashboard-api";
 

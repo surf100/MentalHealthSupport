@@ -2,7 +2,7 @@ import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { Clock3, Eye, FileText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { getMyReports, ReportResponse, ReportStatus } from "../api/report-api";
 
 const STATUS_LABELS: Record<ReportStatus, string> = {

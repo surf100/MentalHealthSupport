@@ -9,7 +9,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router-dom";
 import { getReportById, ReportDetailResponse, ReportStatus } from "../api/report-api";
 
 const STATUS_LABELS: Record<ReportStatus, string> = {

@@ -58,7 +58,7 @@ public class ReportRiskAnalysisService {
                 report.setFlaggedForReview(result.isFlaggedForReview());
                 report.setRiskSummary(result.getSummary());
                 report.setAnalyzedAt(LocalDateTime.now());
-                report.setModerationNotes("Analyzed with local MentalBERT service.");
+                report.setModerationNotes("Analyzed with AI moderation service.");
                 report.setModerationStatus(
                         result.isFlaggedForReview()
                                 ? ForumPostModerationStatus.FLAGGED
@@ -73,7 +73,7 @@ public class ReportRiskAnalysisService {
                 report.setAnalyzedAt(LocalDateTime.now());
                 report.setFlaggedForReview(false);
                 report.setModerationStatus(ForumPostModerationStatus.ANALYSIS_FAILED);
-                report.setModerationNotes("MentalBERT analysis failed: " + ex.getMessage());
+                report.setModerationNotes("AI moderation analysis failed: " + ex.getMessage());
                 reportRepository.save(report);
             }
         });

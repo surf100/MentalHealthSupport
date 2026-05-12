@@ -56,7 +56,7 @@ public class ForumPostRiskAnalysisService {
                 post.setFlaggedForReview(result.isFlaggedForReview());
                 post.setRiskSummary(result.getSummary());
                 post.setAnalyzedAt(LocalDateTime.now());
-                post.setModerationNotes("Analyzed with external AI model.");
+                post.setModerationNotes("Analyzed with AI moderation service.");
                 post.setModerationStatus(
                         result.isFlaggedForReview()
                                 ? ForumPostModerationStatus.FLAGGED
@@ -72,7 +72,7 @@ public class ForumPostRiskAnalysisService {
                 post.setAnalyzedAt(LocalDateTime.now());
                 post.setFlaggedForReview(false);
                 post.setModerationStatus(ForumPostModerationStatus.ANALYSIS_FAILED);
-                post.setModerationNotes("MentalBERT analysis failed: " + ex.getMessage());
+                post.setModerationNotes("AI moderation analysis failed: " + ex.getMessage());
                 forumPostRepository.save(post);
             }
         });

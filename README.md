@@ -232,18 +232,44 @@ spring:
 > **Important:** `ddl-auto: validate` means Hibernate will NOT create tables automatically.
 > You must run the SQL from the Database Setup section above first.
 
-### 2.1 Configure local MentalBERT moderation
+### 2.1 Configure the AI moderation service
 
-This project now expects a local model service for forum risk analysis.
+This project expects a local HTTP sidecar for forum and report risk analysis.
 
-The backend calls a local HTTP service at:
+The backend calls the sidecar at:
 
 ```bash
-MENTALBERT_SERVICE_URL=http://localhost:8001
+AI_MODERATION_SERVICE_URL=http://localhost:8001
 ```
 
-The included Python service in `ml-service/` loads a real Hugging Face sequence-classification
-checkpoint locally. By default it uses:
+The included Python service in `ml-service/` now supports three scoring modes:
+
+```bash
+AI_MODERATION_PROVIDER=auto
+```
+
+- `auto`: use Gemini when `GEMINI_API_KEY` is set, otherwise OpenAI when `OPENAI_API_KEY` is set, otherwise fall back to the bundled local Hugging Face classifier.
+- `gemini`: force Google Gemini API scoring.
+- `openai`: force OpenAI Responses API scoring.
+- `huggingface`: force the local checkpoint.
+
+Recommended Gemini settings:
+
+```bash
+GEMINI_API_KEY=your_google_ai_studio_key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_SECONDS=45
+```
+
+Optional OpenAI settings:
+
+```bash
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5.4-nano
+OPENAI_TIMEOUT_SECONDS=45
+```
+
+If you want the local fallback model instead, the bundled checkpoint still works:
 
 ```bash
 MENTALBERT_MODEL_ID=slimshady07/Mental_BERT
@@ -252,7 +278,7 @@ MENTALBERT_MODEL_ID=slimshady07/Mental_BERT
 You can also point `MENTALBERT_MODEL_ID` to a local filesystem path if you already downloaded
 the model and want fully offline startup.
 
-The ML sidecar also supports sensitivity tuning:
+The sidecar still supports the existing sensitivity tuning:
 
 ```bash
 MENTALBERT_RISK_SCORE_MULTIPLIER=1.5
@@ -262,10 +288,13 @@ MENTALBERT_CRITICAL_THRESHOLD=75
 MENTALBERT_CRISIS_PHRASE_SCORE_FLOOR=85
 ```
 
-Those defaults make the moderation flow more conservative and force explicit self-harm phrases
+Those defaults keep the moderation flow conservative and force explicit self-harm phrases
 such as `hurt myself`, `self harm`, `suicidal`, or `kill myself` into a high-risk path.
 
-### 2.2 Start the MentalBERT service
+For backwards compatibility, the backend still accepts the older `MENTALBERT_*` service URL
+environment variables, but the new `AI_MODERATION_*` names are preferred.
+
+### 2.2 Start the AI moderation service
 
 Open a separate terminal:
 
@@ -277,7 +306,24 @@ pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8001
 ```
 
-If the Hugging Face model requires authentication, log in before starting `uvicorn`:
+If you want Gemini-backed scoring, set the provider and key in the same PowerShell session
+before starting `uvicorn`:
+
+```bash
+$env:AI_MODERATION_PROVIDER="gemini"
+$env:GEMINI_API_KEY="your_google_ai_studio_key"
+$env:GEMINI_MODEL="gemini-2.5-flash"
+```
+
+If you want OpenAI instead, use:
+
+```bash
+$env:AI_MODERATION_PROVIDER="openai"
+$env:OPENAI_API_KEY="your_openai_key"
+$env:OPENAI_MODEL="gpt-5.4-nano"
+```
+
+If you want the local Hugging Face checkpoint and it requires authentication, log in before starting `uvicorn`:
 
 ```bash
 hf auth login
@@ -298,11 +344,11 @@ http://localhost:8001/health
 Expected response:
 
 ```json
-{"status":"ok","modelId":"slimshady07/Mental_BERT"}
+{"status":"ok","provider":"gemini","modelId":"gemini-2.5-flash"}
 ```
 
 Then start the Spring backend normally. New forum posts and anonymous reports will be sent to the
-local MentalBERT service in the background and flagged for moderator review when the model returns
+AI moderation service in the background and flagged for moderator review when the model returns
 high risk.
 
 ### 3. Run the backend
@@ -341,7 +387,7 @@ The frontend will start at **http://localhost:5173**
 
 Open three terminal windows:
 
-**Terminal 1 - MentalBERT ML service:**
+**Terminal 1 - AI moderation service:**
 ```bash
 cd ml-service
 python -m venv .venv

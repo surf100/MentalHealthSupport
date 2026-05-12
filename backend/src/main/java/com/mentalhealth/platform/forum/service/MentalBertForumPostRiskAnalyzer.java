@@ -55,7 +55,7 @@ public class MentalBertForumPostRiskAnalyzer implements ForumPostRiskAnalyzer {
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException(
-                        "MentalBERT service returned HTTP " + response.statusCode() + ": " + response.body()
+                        "AI moderation service returned HTTP " + response.statusCode() + ": " + response.body()
                 );
             }
 
@@ -64,7 +64,7 @@ public class MentalBertForumPostRiskAnalyzer implements ForumPostRiskAnalyzer {
             int riskScore = clamp(body.path("riskScore").asInt(0), 0, 100);
             ForumPostRiskLevel riskLevel = parseRiskLevel(body.path("riskLevel").asText("LOW"));
             boolean flaggedForReview = body.path("flaggedForReview").asBoolean(false);
-            String summary = body.path("summary").asText("MentalBERT analysis completed.");
+            String summary = body.path("summary").asText("AI moderation analysis completed.");
 
             return new ForumPostRiskAnalysisResult(
                     sentimentScore,
@@ -74,10 +74,10 @@ public class MentalBertForumPostRiskAnalyzer implements ForumPostRiskAnalyzer {
                     summary
             );
         } catch (IOException ex) {
-            throw new IllegalStateException("Could not read MentalBERT service response", ex);
+            throw new IllegalStateException("Could not read AI moderation service response", ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("MentalBERT analysis request was interrupted", ex);
+            throw new IllegalStateException("AI moderation analysis request was interrupted", ex);
         }
     }
 

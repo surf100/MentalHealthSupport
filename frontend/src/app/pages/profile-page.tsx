@@ -22,6 +22,7 @@ import {
 } from "../api/profile-api";
 import { useAuth } from "../auth/auth-context";
 import { applyThemePreference } from "../lib/theme";
+import { getDashboard, type DashboardStats } from "../api/dashboard-api";
 import { getToken } from "../lib/auth-storage";
 import { API_BASE_URL } from "../api/api-config";
 
@@ -116,6 +117,9 @@ export function ProfilePage() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
+  // stats
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
   // ── load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
     async function loadProfile() {
@@ -142,13 +146,17 @@ export function ProfilePage() {
     loadProfile();
   }, []);
 
-  // ── load activity ───────────────────────────────────────────────────────────
+  // ── load activity + stats ───────────────────────────────────────────────────
   useEffect(() => {
     async function loadActivity() {
       try {
         setActivityLoading(true);
-        const items = await getRecentActivity();
+        const [items, dashboard] = await Promise.all([
+          getRecentActivity(),
+          getDashboard(),
+        ]);
         setRecentActivity(items);
+        setStats(dashboard.stats);
       } catch {
         // non-critical — silently ignore
       } finally {
@@ -508,6 +516,9 @@ export function ProfilePage() {
                     >
                       <FileText className="w-6 h-6 text-blue-600 mb-4" />
                       <h3 className="text-lg font-semibold mb-2">My Reports</h3>
+                      {stats !== null && (
+                        <p className="text-3xl font-bold text-blue-700 mb-2">{stats.reportsCount}</p>
+                      )}
                       <p className="text-sm text-gray-600 leading-6">
                         Track your submitted reports and their review status.
                       </p>
@@ -534,6 +545,9 @@ export function ProfilePage() {
                       <h3 className="text-lg font-semibold mb-2">
                         Achievements
                       </h3>
+                      {stats !== null && (
+                        <p className="text-3xl font-bold text-amber-700 mb-2">{stats.achievementsCount}</p>
+                      )}
                       <p className="text-sm text-gray-600 leading-6">
                         See your earned badges and participation milestones.
                       </p>

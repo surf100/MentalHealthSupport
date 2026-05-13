@@ -1,0 +1,24 @@
+{
+  "name": "mentalhealth",
+  "version": "1.0.0",
+  "description": "A full-stack web platform where students can anonymously report bullying, access mental health resources, participate in a support forum, and receive help from moderators.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/surf100/MentalHealthSupport.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/surf100/MentalHealthSupport/issues"
+  },
+  "homepage": "https://github.com/surf100/MentalHealthSupport#readme",
+  "dependencies": {
+    "docx": "^9.6.1"
+  }
+}

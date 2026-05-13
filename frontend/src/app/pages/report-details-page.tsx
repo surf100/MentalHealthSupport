@@ -5,7 +5,9 @@ import {
   CalendarDays,
   CircleCheckBig,
   Clock3,
+  Download,
   FileText,
+  ImageIcon,
   ShieldAlert,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -31,6 +33,72 @@ function formatCategory(raw: string) {
   return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// ── Attachment helpers ────────────────────────────────────────────────────────
+
+type Attachment = {
+  name: string;
+  type: string;
+  size: number;
+  url: string; // imgbb URL for images, data URL for docs
+};
+
+function parseAttachments(description: string): { text: string; attachments: Attachment[] } {
+  const match = description.match(/<!--ATTACHMENTS:([\s\S]*?)-->/);
+  if (!match) return { text: description, attachments: [] };
+
+  try {
+    const attachments: Attachment[] = JSON.parse(match[1]);
+    const text = description.replace(/\n\n<!--ATTACHMENTS:[\s\S]*?-->/, "").trim();
+    return { text, attachments };
+  } catch {
+    return { text: description, attachments: [] };
+  }
+}
+
+function AttachmentCard({ attachment }: { attachment: Attachment }) {
+  const isImage = attachment.type.startsWith("image/");
+  const sizeKb = (attachment.size / 1024).toFixed(0);
+
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = attachment.url;
+    a.download = attachment.name;
+    a.target = "_blank";
+    a.click();
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+      {isImage ? (
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="w-12 h-12 rounded object-cover shrink-0 border"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+          <FileText className="w-5 h-5 text-red-500" />
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">{attachment.name}</p>
+        <p className="text-xs text-gray-500">{sizeKb} KB · {isImage ? "Image" : "Document"}</p>
+      </div>
+
+      <button
+        onClick={handleDownload}
+        title="Download file"
+        className="shrink-0 p-2 rounded-lg border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-500 hover:text-emerald-700 transition-colors"
+      >
+        <Download className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export function ReportDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -41,19 +109,13 @@ export function ReportDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!reportId) {
-      setError("Invalid report ID");
-      setIsLoading(false);
-      return;
-    }
-
+    if (!reportId) { setError("Invalid report ID"); setIsLoading(false); return; }
     getReportById(reportId)
       .then(setReport)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [reportId]);
 
-  // Loading skeleton
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -85,7 +147,6 @@ export function ReportDetailsPage() {
     );
   }
 
-  // Not found / error
   if (error || !report) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -97,10 +158,7 @@ export function ReportDetailsPage() {
               <p className="text-gray-600 mb-6">
                 {error ?? "The report you are looking for does not exist or may no longer be available."}
               </p>
-              <button
-                onClick={() => navigate("/my-reports")}
-                className="bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800"
-              >
+              <button onClick={() => navigate("/my-reports")} className="bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800">
                 Return to My Reports
               </button>
             </div>
@@ -111,16 +169,15 @@ export function ReportDetailsPage() {
     );
   }
 
+  const { text: descriptionText, attachments } = parseAttachments(report.description);
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-8 py-12">
-          <button
-            onClick={() => navigate("/my-reports")}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-8"
-          >
+          <button onClick={() => navigate("/my-reports")} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-8">
             <ArrowLeft className="w-4 h-4" />
             Back to My Reports
           </button>
@@ -136,20 +193,14 @@ export function ReportDetailsPage() {
                         <FileText className="w-4 h-4" />
                         {report.reference}
                       </span>
-                      <span
-                        className={`text-xs px-3 py-1 rounded-full ${getStatusClasses(report.status)}`}
-                      >
+                      <span className={`text-xs px-3 py-1 rounded-full ${getStatusClasses(report.status)}`}>
                         {STATUS_LABELS[report.status]}
                       </span>
                     </div>
-
-                    <h1 className="text-4xl font-bold mb-3">
-                      {formatCategory(report.category)}
-                    </h1>
+                    <h1 className="text-4xl font-bold mb-3">{formatCategory(report.category)}</h1>
                     <p className="text-lg text-gray-600 leading-8">{report.title}</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4 border-t pt-6 mt-6">
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <CalendarDays className="w-4 h-4" />
@@ -165,17 +216,30 @@ export function ReportDetailsPage() {
               {/* Description */}
               <div className="border rounded-xl p-8">
                 <h2 className="text-2xl font-semibold mb-5">Report Description</h2>
-                <p className="text-[15px] text-gray-700 leading-8">{report.description}</p>
+                <p className="text-[15px] text-gray-700 leading-8 whitespace-pre-wrap">{descriptionText}</p>
               </div>
+
+              {/* Attachments */}
+              {attachments.length > 0 && (
+                <div className="border rounded-xl p-8">
+                  <h2 className="text-2xl font-semibold mb-5 flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-gray-500" />
+                    Attachments
+                    <span className="text-sm font-normal text-gray-400">({attachments.length} file{attachments.length !== 1 ? "s" : ""})</span>
+                  </h2>
+                  <div className="space-y-3">
+                    {attachments.map((att, i) => (
+                      <AttachmentCard key={i} attachment={att} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Timeline */}
               <div className="border rounded-xl p-8">
                 <h2 className="text-2xl font-semibold mb-6">Status Timeline</h2>
-
                 {report.timeline.length === 0 ? (
-                  <p className="text-sm text-gray-600">
-                    No status updates are available yet.
-                  </p>
+                  <p className="text-sm text-gray-600">No status updates are available yet.</p>
                 ) : (
                   <div className="space-y-5">
                     {report.timeline.map((item) => (
@@ -208,36 +272,16 @@ export function ReportDetailsPage() {
                   If the situation becomes urgent or unsafe, use crisis support resources immediately.
                 </p>
                 <div className="space-y-3">
-                  <button
-                    onClick={() => navigate("/crisis-help")}
-                    className="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800"
-                  >
-                    Crisis Help
-                  </button>
-                  <button
-                    onClick={() => navigate("/report")}
-                    className="w-full border py-3 rounded-md hover:bg-gray-50"
-                  >
-                    Submit Another Report
-                  </button>
+                  <button onClick={() => navigate("/crisis-help")} className="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800">Crisis Help</button>
+                  <button onClick={() => navigate("/report")} className="w-full border py-3 rounded-md hover:bg-gray-50">Submit Another Report</button>
                 </div>
               </div>
 
               <div className="border rounded-xl p-6">
                 <h4 className="font-semibold mb-4">Quick actions</h4>
                 <div className="space-y-3">
-                  <button
-                    onClick={() => navigate("/my-reports")}
-                    className="w-full border rounded-md py-3 text-sm hover:bg-gray-50"
-                  >
-                    Back to My Reports
-                  </button>
-                  <button
-                    onClick={() => navigate("/knowledge-base")}
-                    className="w-full border rounded-md py-3 text-sm hover:bg-gray-50"
-                  >
-                    Open Knowledge Base
-                  </button>
+                  <button onClick={() => navigate("/my-reports")} className="w-full border rounded-md py-3 text-sm hover:bg-gray-50">Back to My Reports</button>
+                  <button onClick={() => navigate("/knowledge-base")} className="w-full border rounded-md py-3 text-sm hover:bg-gray-50">Open Knowledge Base</button>
                 </div>
               </div>
             </aside>

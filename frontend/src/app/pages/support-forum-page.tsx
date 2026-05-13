@@ -1,6 +1,6 @@
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
-import { AlertCircle, Flag, MessageSquare, Search } from "lucide-react";
+import { AlertCircle, CheckCircle, Flag, MessageSquare, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -36,6 +36,19 @@ export function SupportForumPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("ALL");
   const [query, setQuery] = useState("");
+  const [flaggedPosts, setFlaggedPosts] = useState<Set<number>>(new Set());
+  const [toast, setToast] = useState<{ message: string; type: "success" | "info" } | null>(null);
+
+  function handleFlag(e: React.MouseEvent, postId: number) {
+    e.stopPropagation();
+    if (flaggedPosts.has(postId)) {
+      setToast({ message: "You have already reported this post.", type: "info" });
+    } else {
+      setFlaggedPosts((prev) => new Set(prev).add(postId));
+      setToast({ message: "Post reported. Our moderators will review it.", type: "success" });
+    }
+    setTimeout(() => setToast(null), 3500);
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -62,6 +75,22 @@ export function SupportForumPage() {
       <Header />
 
       <main className="flex-1">
+        {toast && (
+          <div
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-lg border text-sm font-medium transition-all ${
+              toast.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-gray-50 border-gray-200 text-gray-700"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <X className="w-4 h-4 text-gray-500 shrink-0" />
+            )}
+            {toast.message}
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-8 py-12">
           <div className="mb-10 flex items-end justify-between">
             <div>
@@ -148,7 +177,15 @@ export function SupportForumPage() {
                         <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
                           {CATEGORY_LABELS[post.category] ?? post.category}
                         </span>
-                        <Flag className="w-4 h-4 text-gray-400" />
+                        <button
+                          onClick={(e) => handleFlag(e, post.id)}
+                          title="Report this post"
+                          className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+                            flaggedPosts.has(post.id) ? "text-red-500" : "text-gray-400 hover:text-red-400"
+                          }`}
+                        >
+                          <Flag className="w-4 h-4" />
+                        </button>
                       </div>
 
                       <h3 className="text-xl font-semibold mb-2">{post.title}</h3>

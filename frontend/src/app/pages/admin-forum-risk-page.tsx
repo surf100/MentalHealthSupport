@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowUpRight, Brain, FileText, Search, ShieldAlert, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Brain, Download, FileText, Search, ShieldAlert, UserRound } from "lucide-react";
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
 import { useAuth } from "../auth/auth-context";
@@ -20,6 +20,67 @@ import {
   type ForumRiskLevel,
   type ReportModerationQueueItemResponse,
 } from "../api/admin-api";
+
+// ── Attachment helpers ─────────────────────────────────────────────────────────
+
+type Attachment = {
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+};
+
+function parseAttachments(description: string): { text: string; attachments: Attachment[] } {
+  const match = description.match(/<!--ATTACHMENTS:([\s\S]*?)-->/);
+  if (!match) return { text: description, attachments: [] };
+  try {
+    const attachments: Attachment[] = JSON.parse(match[1]);
+    const text = description.replace(/\n\n<!--ATTACHMENTS:[\s\S]*?-->/, "").trim();
+    return { text, attachments };
+  } catch {
+    return { text: description, attachments: [] };
+  }
+}
+
+function AttachmentCard({ attachment }: { attachment: Attachment }) {
+  const isImage = attachment.type.startsWith("image/");
+  const sizeKb = (attachment.size / 1024).toFixed(0);
+
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = attachment.url;
+    a.download = attachment.name;
+    a.target = "_blank";
+    a.click();
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+      {isImage ? (
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="w-12 h-12 rounded object-cover shrink-0 border"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+          <FileText className="w-5 h-5 text-red-500" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">{attachment.name}</p>
+        <p className="text-xs text-gray-500">{sizeKb} KB · {isImage ? "Image" : "Document"}</p>
+      </div>
+      <button
+        onClick={handleDownload}
+        title="Download file"
+        className="shrink-0 p-2 rounded-lg border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-500 hover:text-emerald-700 transition-colors"
+      >
+        <Download className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
 
 type StatusFilter = "ALL" | ForumModerationStatus;
 type ModerationView = "REPORTS" | "FORUM";
@@ -523,11 +584,30 @@ export function AdminForumRiskPage() {
 
                       <div className="grid grid-cols-12 gap-6">
                         <div className="col-span-8">
-                          <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
-                            <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap">
-                              {report.description}
-                            </p>
-                          </div>
+                          {(() => {
+                            const { text: descText, attachments } = parseAttachments(report.description);
+                            return (
+                              <>
+                                <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
+                                  <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap">
+                                    {descText}
+                                  </p>
+                                </div>
+                                {attachments.length > 0 && (
+                                  <div className="mt-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                                      Attachments ({attachments.length})
+                                    </p>
+                                    <div className="space-y-2">
+                                      {attachments.map((att, i) => (
+                                        <AttachmentCard key={i} attachment={att} />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
 
                           <div className="mt-4 rounded-xl bg-red-50 border border-red-100 p-4">
                             <p className="text-xs uppercase tracking-wide text-red-700 font-semibold mb-2">

@@ -1,21 +1,61 @@
+import json
 import os
+import re
 from functools import lru_cache
-from typing import List
+from typing import Any, Dict, List
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-import torch
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from pydantic import BaseModel, Field
 
 
-DEFAULT_MODEL_ID = "slimshady07/Mental_BERT"
-MAX_LENGTH = int(os.getenv("MENTALBERT_MAX_LENGTH", "256"))
-HF_TOKEN = os.getenv("HF_TOKEN")
-RISK_SCORE_MULTIPLIER = float(os.getenv("MENTALBERT_RISK_SCORE_MULTIPLIER", "1.5"))
-MODERATE_RISK_THRESHOLD = int(os.getenv("MENTALBERT_MODERATE_THRESHOLD", "20"))
-HIGH_RISK_THRESHOLD = int(os.getenv("MENTALBERT_HIGH_THRESHOLD", "45"))
-CRITICAL_RISK_THRESHOLD = int(os.getenv("MENTALBERT_CRITICAL_THRESHOLD", "75"))
-CRISIS_PHRASE_SCORE_FLOOR = int(os.getenv("MENTALBERT_CRISIS_PHRASE_SCORE_FLOOR", "85"))
+def read_env(*names: str, default: str) -> str:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value != "":
+            return value
+    return default
+
+
+DEFAULT_HUGGINGFACE_MODEL_ID = "slimshady07/Mental_BERT"
+DEFAULT_OPENAI_MODEL_ID = "gpt-5.4-nano"
+DEFAULT_GEMINI_MODEL_ID = "gemini-2.5-flash"
+
+MAX_LENGTH = int(read_env("MENTALBERT_MAX_LENGTH", default="256"))
+HF_TOKEN = read_env("HF_TOKEN", default="")
+
+RISK_SCORE_MULTIPLIER = float(
+    read_env("MENTALBERT_RISK_SCORE_MULTIPLIER", default="1.5")
+)
+MODERATE_RISK_THRESHOLD = int(read_env("MENTALBERT_MODERATE_THRESHOLD", default="20"))
+HIGH_RISK_THRESHOLD = int(read_env("MENTALBERT_HIGH_THRESHOLD", default="45"))
+CRITICAL_RISK_THRESHOLD = int(read_env("MENTALBERT_CRITICAL_THRESHOLD", default="75"))
+CRISIS_PHRASE_SCORE_FLOOR = int(
+    read_env("MENTALBERT_CRISIS_PHRASE_SCORE_FLOOR", default="85")
+)
+
+ANALYZER_PROVIDER = read_env(
+    "AI_MODERATION_PROVIDER",
+    "RISK_ANALYZER_PROVIDER",
+    default="auto",
+).strip().lower()
+OPENAI_API_KEY = read_env("OPENAI_API_KEY", default="").strip()
+OPENAI_BASE_URL = read_env(
+    "OPENAI_BASE_URL",
+    default="https://api.openai.com/v1",
+).rstrip("/")
+OPENAI_MODEL_ID = read_env("OPENAI_MODEL", default=DEFAULT_OPENAI_MODEL_ID)
+OPENAI_TIMEOUT_SECONDS = float(read_env("OPENAI_TIMEOUT_SECONDS", default="45"))
+GEMINI_API_KEY = read_env("GEMINI_API_KEY", "GOOGLE_API_KEY", default="").strip()
+GEMINI_BASE_URL = read_env(
+    "GEMINI_BASE_URL",
+    default="https://generativelanguage.googleapis.com/v1beta",
+).rstrip("/")
+GEMINI_MODEL_ID = read_env("GEMINI_MODEL", default=DEFAULT_GEMINI_MODEL_ID)
+GEMINI_TIMEOUT_SECONDS = float(read_env("GEMINI_TIMEOUT_SECONDS", default="45"))
+SUMMARY_CHARACTER_LIMIT = 500
+LABEL_LIMIT = 5
 
 CRISIS_PHRASE_WEIGHTS = {
     "kill myself": 100,
@@ -31,7 +71,20 @@ CRISIS_PHRASE_WEIGHTS = {
     "harm myself": CRISIS_PHRASE_SCORE_FLOOR,
 }
 
-app = FastAPI(title="MentalBERT Risk Service", version="1.0.0")
+RISK_CLASSIFIER_INSTRUCTIONS = """You are a campus safety and mental-health moderation classifier.
+Assess student-written reports and forum posts for human review triage.
+
+Important guidance:
+- Use context and implied meaning, not just keywords.
+- Lower the score for ordinary frustration, sarcasm, quotes, song lyrics, jokes, figurative language, or descriptions about someone else when there is no direct danger.
+- Raise the score for sustained hopelessness, bullying, abuse, panic, threats, self-harm, suicidal intent, or urgent safety concerns.
+- This is moderation triage, not diagnosis.
+- Use 1 to 5 short snake_case labels for the strongest signals.
+- Keep the summary concise, factual, and suitable for a moderator dashboard.
+- Return only JSON that matches the provided schema.
+"""
+
+app = FastAPI(title="AI Moderation Risk Service", version="2.0.0")
 
 
 class AnalyzeRequest(BaseModel):
@@ -41,8 +94,20 @@ class AnalyzeRequest(BaseModel):
 
 
 class LabelScore(BaseModel):
-    label: str
-    score: float
+    label: str = Field(..., min_length=1, max_length=64)
+    score: float = Field(..., ge=0.0, le=1.0)
+
+    class Config:
+        extra = "forbid"
+
+
+class StructuredRiskAssessment(BaseModel):
+    riskScore: int = Field(..., ge=0, le=100)
+    summary: str = Field(..., min_length=1, max_length=320)
+    labels: List[LabelScore] = Field(default_factory=list)
+
+    class Config:
+        extra = "forbid"
 
 
 class AnalyzeResponse(BaseModel):
@@ -55,17 +120,136 @@ class AnalyzeResponse(BaseModel):
     labels: List[LabelScore]
 
 
+OPENAI_RISK_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["riskScore", "summary", "labels"],
+    "properties": {
+        "riskScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+        },
+        "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 320,
+        },
+        "labels": {
+            "type": "array",
+            "maxItems": LABEL_LIMIT,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["label", "score"],
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                    },
+                    "score": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                    },
+                },
+            },
+        },
+    },
+}
+
+GEMINI_RISK_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "riskScore": {
+            "type": "integer",
+            "description": "Urgency score from 0 to 100 for moderator triage.",
+        },
+        "summary": {
+            "type": "string",
+            "description": "Brief factual explanation for moderators.",
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "description": "Short snake_case signal label.",
+                    },
+                    "score": {
+                        "type": "number",
+                        "description": "Confidence from 0 to 1.",
+                    },
+                },
+                "required": ["label", "score"],
+            },
+        },
+    },
+    "required": ["riskScore", "summary", "labels"],
+}
+
+
+def parse_model_from_json(model_class: Any, raw_json: str) -> BaseModel:
+    if hasattr(model_class, "model_validate_json"):
+        return model_class.model_validate_json(raw_json)
+    return model_class.parse_raw(raw_json)
+
+
+def active_provider() -> str:
+    if ANALYZER_PROVIDER in {"", "auto"}:
+        if GEMINI_API_KEY:
+            return "gemini"
+        if OPENAI_API_KEY:
+            return "openai"
+        return "huggingface"
+    if ANALYZER_PROVIDER not in {"openai", "gemini", "huggingface"}:
+        raise RuntimeError(
+            "Unsupported AI_MODERATION_PROVIDER. Use 'auto', 'gemini', 'openai', or 'huggingface'."
+        )
+    if ANALYZER_PROVIDER == "openai" and not OPENAI_API_KEY:
+        raise RuntimeError(
+            "OPENAI_API_KEY is required when AI_MODERATION_PROVIDER is set to 'openai'."
+        )
+    if ANALYZER_PROVIDER == "gemini" and not GEMINI_API_KEY:
+        raise RuntimeError(
+            "GEMINI_API_KEY or GOOGLE_API_KEY is required when AI_MODERATION_PROVIDER is set to 'gemini'."
+        )
+    return ANALYZER_PROVIDER
+
+
 @lru_cache(maxsize=1)
-def load_pipeline():
-    model_id = os.getenv("MENTALBERT_MODEL_ID", DEFAULT_MODEL_ID)
-    tokenizer = AutoTokenizer.from_pretrained(model_id, token=HF_TOKEN)
-    model = AutoModelForSequenceClassification.from_pretrained(model_id, token=HF_TOKEN)
+def load_huggingface_pipeline():
+    try:
+        import torch  # type: ignore
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "Local Hugging Face dependencies are missing. Install torch and transformers "
+            "or switch AI_MODERATION_PROVIDER to 'gemini' or 'openai'."
+        ) from exc
+
+    model_id = read_env("MENTALBERT_MODEL_ID", default=DEFAULT_HUGGINGFACE_MODEL_ID)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, token=HF_TOKEN or None)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_id,
+        token=HF_TOKEN or None,
+    )
     model.eval()
-    return model_id, tokenizer, model
+    return model_id, tokenizer, model, torch
 
 
 def normalize_label(label: str) -> str:
     return label.lower().replace(" ", "_").replace("-", "_")
+
+
+def cleanup_label(label: str) -> str:
+    normalized = normalize_label(label)
+    normalized = re.sub(r"[^a-z0-9_]+", "_", normalized)
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    return normalized or "general_distress"
 
 
 def score_weight_for_label(label: str) -> float:
@@ -151,11 +335,7 @@ def calibrate_risk_score(raw_score: int) -> int:
 
 def crisis_score_floor_for_text(text: str) -> tuple[int, List[str]]:
     normalized = text.lower()
-    matched_phrases = [
-        phrase
-        for phrase in CRISIS_PHRASE_WEIGHTS
-        if phrase in normalized
-    ]
+    matched_phrases = [phrase for phrase in CRISIS_PHRASE_WEIGHTS if phrase in normalized]
 
     if not matched_phrases:
         return 0, []
@@ -164,35 +344,333 @@ def crisis_score_floor_for_text(text: str) -> tuple[int, List[str]]:
     return score_floor, matched_phrases
 
 
-def build_summary(
-    labels: List[LabelScore],
-    risk_score: int,
-    model_id: str,
-    matched_phrases: List[str],
-) -> str:
-    top_items = labels[:2]
-    signals = ", ".join(
-        f"{item.label} {item.score:.2f}"
-        for item in top_items
-    )
-    if matched_phrases:
-        phrases = ", ".join(matched_phrases)
-        return (
-            f"{model_id} top signals: {signals}. "
-            f"Detected crisis phrases: {phrases}. Computed risk score {risk_score}/100."
+def normalize_whitespace(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def truncate_text(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    trimmed = text[: max(0, limit - 3)].rstrip()
+    return trimmed + "..."
+
+
+def normalize_labels(labels: List[LabelScore], matched_phrases: List[str]) -> List[LabelScore]:
+    normalized: List[LabelScore] = []
+    seen_labels = set()
+
+    for item in labels:
+        cleaned_label = cleanup_label(item.label)
+        if cleaned_label in seen_labels:
+            continue
+        seen_labels.add(cleaned_label)
+        normalized.append(
+            LabelScore(
+                label=cleaned_label,
+                score=round(max(0.0, min(1.0, float(item.score))), 4),
+            )
         )
-    return f"{model_id} top signals: {signals}. Computed risk score {risk_score}/100."
+
+    if matched_phrases and "explicit_crisis_language" not in seen_labels:
+        normalized.insert(0, LabelScore(label="explicit_crisis_language", score=1.0))
+
+    normalized.sort(key=lambda item: item.score, reverse=True)
+    return normalized[:LABEL_LIMIT]
+
+
+def build_huggingface_summary(labels: List[LabelScore]) -> str:
+    if labels:
+        top_signals = ", ".join(
+            f"{cleanup_label(item.label)} {item.score:.2f}"
+            for item in labels[:2]
+        )
+        return f"Top moderation signals: {top_signals}"
+    return "Limited classifier confidence; using fallback moderation heuristics"
+
+
+def finalize_summary(summary: str, risk_score: int, matched_phrases: List[str]) -> str:
+    parts: List[str] = []
+    cleaned_summary = normalize_whitespace(summary).rstrip(".")
+    if cleaned_summary:
+        parts.append(cleaned_summary)
+    if matched_phrases:
+        parts.append(
+            "Explicit crisis language detected: " + ", ".join(matched_phrases)
+        )
+    parts.append(f"Triage score {risk_score}/100")
+    return truncate_text(". ".join(parts) + ".", SUMMARY_CHARACTER_LIMIT)
+
+
+def extract_openai_output_text(response_body: Dict[str, Any]) -> str:
+    output_text = response_body.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+
+    collected: List[str] = []
+
+    for item in response_body.get("output", []):
+        if item.get("type") != "message":
+            continue
+
+        for content in item.get("content", []):
+            content_type = content.get("type")
+            if content_type == "output_text":
+                text = content.get("text", "")
+                if text:
+                    collected.append(text)
+            if content_type == "refusal":
+                raise RuntimeError(
+                    "The provider refused to classify this report for moderation."
+                )
+
+    joined = "\n".join(part.strip() for part in collected if part.strip()).strip()
+    if joined:
+        return joined
+
+    error = response_body.get("error")
+    if isinstance(error, dict) and error.get("message"):
+        raise RuntimeError(str(error["message"]))
+
+    raise RuntimeError("The provider returned no structured text output.")
+
+
+def build_classification_prompt(request: AnalyzeRequest) -> str:
+    return (
+        f"{RISK_CLASSIFIER_INSTRUCTIONS}\n\n"
+        "Classify this campus mental-health moderation submission.\n\n"
+        f"Category: {request.category}\n"
+        f"Title: {request.title}\n"
+        f"Content: {request.content}\n"
+    )
+
+
+def analyze_with_openai(request: AnalyzeRequest) -> tuple[str, int, str, List[LabelScore]]:
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY is not configured.")
+
+    payload = {
+        "model": OPENAI_MODEL_ID,
+        "instructions": RISK_CLASSIFIER_INSTRUCTIONS,
+        "input": build_classification_prompt(request),
+        "max_output_tokens": 300,
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "moderation_risk_assessment",
+                "strict": True,
+                "schema": OPENAI_RISK_SCHEMA,
+            }
+        },
+    }
+
+    encoded_payload = json.dumps(payload).encode("utf-8")
+    http_request = Request(
+        f"{OPENAI_BASE_URL}/responses",
+        data=encoded_payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urlopen(http_request, timeout=OPENAI_TIMEOUT_SECONDS) as response:
+            raw_body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"OpenAI Responses API returned HTTP {exc.code}: {error_body}"
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError(f"Could not reach the OpenAI Responses API: {exc}") from exc
+
+    response_body = json.loads(raw_body)
+    structured_text = extract_openai_output_text(response_body)
+    assessment = parse_model_from_json(StructuredRiskAssessment, structured_text)
+    labels = normalize_labels(list(assessment.labels), matched_phrases=[])
+    risk_score = max(0, min(100, int(assessment.riskScore)))
+    summary = truncate_text(normalize_whitespace(assessment.summary), 320)
+    return OPENAI_MODEL_ID, risk_score, summary, labels
+
+
+def extract_gemini_output_text(response_body: Dict[str, Any]) -> str:
+    candidates = response_body.get("candidates", [])
+    if not isinstance(candidates, list) or not candidates:
+        prompt_feedback = response_body.get("promptFeedback")
+        if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason"):
+            raise RuntimeError(
+                f"Gemini blocked the request: {prompt_feedback.get('blockReason')}"
+            )
+        raise RuntimeError("Gemini returned no candidates.")
+
+    first_candidate = candidates[0]
+    finish_reason = first_candidate.get("finishReason")
+    if finish_reason and finish_reason not in {"STOP", "MAX_TOKENS"}:
+        raise RuntimeError(f"Gemini did not complete normally: {finish_reason}")
+
+    content = first_candidate.get("content", {})
+    for part in content.get("parts", []):
+        text = part.get("text")
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+
+    raise RuntimeError("Gemini returned no structured text output.")
+
+
+def analyze_with_gemini(request: AnalyzeRequest) -> tuple[str, int, str, List[LabelScore]]:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": build_classification_prompt(request),
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "responseMimeType": "application/json",
+            "responseJsonSchema": GEMINI_RISK_SCHEMA,
+        },
+    }
+
+    encoded_payload = json.dumps(payload).encode("utf-8")
+    request_url = f"{GEMINI_BASE_URL}/models/{GEMINI_MODEL_ID}:generateContent"
+    http_request = Request(
+        request_url,
+        data=encoded_payload,
+        method="POST",
+        headers={
+            "x-goog-api-key": GEMINI_API_KEY,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urlopen(http_request, timeout=GEMINI_TIMEOUT_SECONDS) as response:
+            raw_body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Gemini API returned HTTP {exc.code}: {error_body}"
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError(f"Could not reach the Gemini API: {exc}") from exc
+
+    response_body = json.loads(raw_body)
+    structured_text = extract_gemini_output_text(response_body)
+    assessment = parse_model_from_json(StructuredRiskAssessment, structured_text)
+    labels = normalize_labels(list(assessment.labels), matched_phrases=[])
+    risk_score = max(0, min(100, int(assessment.riskScore)))
+    summary = truncate_text(normalize_whitespace(assessment.summary), 320)
+    return GEMINI_MODEL_ID, risk_score, summary, labels
+
+
+def analyze_with_huggingface(
+    request: AnalyzeRequest,
+) -> tuple[str, int, str, List[LabelScore]]:
+    model_id, tokenizer, model, torch = load_huggingface_pipeline()
+    text = f"Category: {request.category}\nTitle: {request.title}\nContent: {request.content}"
+
+    inputs = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=MAX_LENGTH,
+    )
+
+    with torch.no_grad():
+        logits = model(**inputs).logits
+        probabilities = torch.softmax(logits, dim=-1)[0].tolist()
+
+    labels: List[LabelScore] = []
+    id_to_label = getattr(model.config, "id2label", {}) or {}
+    for index, probability in enumerate(probabilities):
+        label = id_to_label.get(index, f"LABEL_{index}")
+        labels.append(LabelScore(label=label, score=round(float(probability), 6)))
+
+    labels.sort(key=lambda item: item.score, reverse=True)
+
+    risk_probability = derive_risk_probability(labels)
+    raw_risk_score = int(round(risk_probability * 100))
+    risk_score = calibrate_risk_score(raw_risk_score)
+    summary = build_huggingface_summary(labels)
+    return model_id, risk_score, summary, normalize_labels(labels, matched_phrases=[])
+
+
+def analyze_submission(
+    request: AnalyzeRequest,
+) -> tuple[str, int, str, List[LabelScore], List[str]]:
+    provider = active_provider()
+    combined_text = f"{request.title}\n{request.content}"
+    crisis_score_floor, matched_phrases = crisis_score_floor_for_text(combined_text)
+
+    if provider == "gemini":
+        model_id, risk_score, base_summary, labels = analyze_with_gemini(request)
+    elif provider == "openai":
+        model_id, risk_score, base_summary, labels = analyze_with_openai(request)
+    else:
+        model_id, risk_score, base_summary, labels = analyze_with_huggingface(request)
+
+    adjusted_risk_score = max(risk_score, crisis_score_floor)
+    adjusted_summary = finalize_summary(base_summary, adjusted_risk_score, matched_phrases)
+    adjusted_labels = normalize_labels(labels, matched_phrases)
+    return model_id, adjusted_risk_score, adjusted_summary, adjusted_labels, matched_phrases
 
 
 @app.get("/health")
 def health():
     try:
-        model_id, _, _ = load_pipeline()
-        return {"status": "ok", "modelId": model_id}
+        provider = active_provider()
+        if provider == "gemini":
+            if not GEMINI_API_KEY:
+                raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
+            return {
+                "status": "ok",
+                "provider": provider,
+                "modelId": GEMINI_MODEL_ID,
+            }
+        if provider == "openai":
+            if not OPENAI_API_KEY:
+                raise RuntimeError("OPENAI_API_KEY is not configured.")
+            return {
+                "status": "ok",
+                "provider": provider,
+                "modelId": OPENAI_MODEL_ID,
+            }
+
+        model_id, _, _, _ = load_huggingface_pipeline()
+        return {
+            "status": "ok",
+            "provider": provider,
+            "modelId": model_id,
+        }
     except Exception as exc:
+        if GEMINI_API_KEY:
+            provider = "gemini"
+        elif OPENAI_API_KEY:
+            provider = "openai"
+        else:
+            provider = "huggingface"
+        fallback_model_id = (
+            GEMINI_MODEL_ID if provider == "gemini" else (
+                OPENAI_MODEL_ID if provider == "openai" else read_env(
+                    "MENTALBERT_MODEL_ID",
+                    default=DEFAULT_HUGGINGFACE_MODEL_ID,
+                )
+            )
+        )
         return {
             "status": "error",
-            "modelId": os.getenv("MENTALBERT_MODEL_ID", DEFAULT_MODEL_ID),
+            "provider": provider,
+            "modelId": fallback_model_id,
             "error": str(exc),
         }
 
@@ -200,35 +678,7 @@ def health():
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest):
     try:
-        model_id, tokenizer, model = load_pipeline()
-        text = f"Category: {request.category}\nTitle: {request.title}\nContent: {request.content}"
-
-        inputs = tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-            max_length=MAX_LENGTH,
-        )
-
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            probabilities = torch.softmax(logits, dim=-1)[0].tolist()
-
-        labels: List[LabelScore] = []
-        id_to_label = getattr(model.config, "id2label", {}) or {}
-        for index, probability in enumerate(probabilities):
-            label = id_to_label.get(index, f"LABEL_{index}")
-            labels.append(LabelScore(label=label, score=round(float(probability), 6)))
-
-        labels.sort(key=lambda item: item.score, reverse=True)
-
-        risk_probability = derive_risk_probability(labels)
-        model_risk_score = int(round(risk_probability * 100))
-        risk_score = calibrate_risk_score(model_risk_score)
-        crisis_score_floor, matched_phrases = crisis_score_floor_for_text(
-            f"{request.title}\n{request.content}"
-        )
-        risk_score = max(risk_score, crisis_score_floor)
+        model_id, risk_score, summary, labels, _ = analyze_submission(request)
         risk_level = risk_level_for_score(risk_score)
         flagged_for_review = risk_level in {"HIGH", "CRITICAL"}
         effective_risk_probability = risk_score / 100.0
@@ -239,7 +689,7 @@ def analyze(request: AnalyzeRequest):
             riskScore=risk_score,
             riskLevel=risk_level,
             flaggedForReview=flagged_for_review,
-            summary=build_summary(labels, risk_score, model_id, matched_phrases),
+            summary=summary,
             modelId=model_id,
             labels=labels,
         )
@@ -247,8 +697,8 @@ def analyze(request: AnalyzeRequest):
         detail = str(exc)
         if "gated" in detail.lower() or "access" in detail.lower() or "401" in detail:
             detail = (
-                "Failed to load the MentalBERT checkpoint. "
-                "This model may require accepting Hugging Face access conditions and/or setting HF_TOKEN. "
+                "Failed to load the configured moderation model. "
+                "For Hugging Face checkpoints, accept the model access conditions and/or set HF_TOKEN. "
                 f"Original error: {exc}"
             )
         raise HTTPException(status_code=503, detail=detail) from exc

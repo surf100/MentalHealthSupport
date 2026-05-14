@@ -27,8 +27,8 @@ jwt:
 
 ml:
   forum-risk:
-    base-url: ${MENTALBERT_SERVICE_URL:http://localhost:8001}
-    analyze-path: ${MENTALBERT_ANALYZE_PATH:/analyze}
-    connect-timeout-ms: ${MENTALBERT_CONNECT_TIMEOUT_MS:3000}
-    retry-initial-delay-ms: ${MENTALBERT_RETRY_INITIAL_DELAY_MS:15000}
-    retry-fixed-delay-ms: ${MENTALBERT_RETRY_FIXED_DELAY_MS:60000}
+    base-url: ${AI_MODERATION_SERVICE_URL:${MENTALBERT_SERVICE_URL:http://localhost:8001}}
+    analyze-path: ${AI_MODERATION_ANALYZE_PATH:${MENTALBERT_ANALYZE_PATH:/analyze}}
+    connect-timeout-ms: ${AI_MODERATION_CONNECT_TIMEOUT_MS:${MENTALBERT_CONNECT_TIMEOUT_MS:3000}}
+    retry-initial-delay-ms: ${AI_MODERATION_RETRY_INITIAL_DELAY_MS:${MENTALBERT_RETRY_INITIAL_DELAY_MS:15000}}
+    retry-fixed-delay-ms: ${AI_MODERATION_RETRY_FIXED_DELAY_MS:${MENTALBERT_RETRY_FIXED_DELAY_MS:60000}}

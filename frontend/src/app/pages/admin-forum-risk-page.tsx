@@ -187,7 +187,7 @@ function formatDateTime(value: string | null) {
 
 function getFailureHint(status: ForumModerationStatus) {
   if (status === "ANALYSIS_FAILED") {
-    return "MentalBERT did not complete for this item. Check the sidecar service and restart the backend backfill.";
+    return "The AI moderation service did not complete for this item. Check the sidecar service and restart the backend backfill.";
   }
   if (status === "PENDING_ANALYSIS") {
     return "This item has been submitted but the background analysis has not completed yet.";
@@ -786,7 +786,7 @@ export function AdminForumRiskPage() {
               >
                 {queueMode === "SPECIALIST"
                   ? "No escalated cases match this view right now."
-                  : "Try a different filter, or wait for MentalBERT analysis to complete after submission."}
+                  : "Try a different filter, or wait for the AI moderation analysis to complete after submission."}
               </p>
             </div>
           ) : (

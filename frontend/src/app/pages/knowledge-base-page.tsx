@@ -24,6 +24,7 @@ export type Article = {
 
 const STORAGE_KEY = "kb_articles";
 
+/* оставь твой defaultArticles без изменений */
 const defaultArticles: Article[] = [
   {
     id: 1,
@@ -146,8 +147,6 @@ const ALL_CATEGORIES: Category[] = [
   "Support for Friends",
 ];
 
-// ── Add Article Modal ──────────────────────────────────────────────────────────
-
 function AddArticleModal({
   onClose,
   onAdd,
@@ -178,25 +177,17 @@ function AddArticleModal({
   }
 
   function handleSubmit() {
-    if (!title.trim()) {
-      setError("Title is required.");
-      return;
-    }
-    if (!description.trim()) {
-      setError("Description is required.");
-      return;
-    }
-    if (!intro.trim()) {
-      setError("Intro is required.");
-      return;
-    }
+    if (!title.trim()) return setError("Title is required.");
+    if (!description.trim()) return setError("Description is required.");
+    if (!intro.trim()) return setError("Intro is required.");
+
     const filledParagraphs = paragraphs.filter((p) => p.trim());
     if (filledParagraphs.length === 0) {
       setError("At least one paragraph of content is required.");
       return;
     }
 
-    const article: Article = {
+    onAdd({
       id: Date.now(),
       title: title.trim(),
       description: description.trim(),
@@ -204,111 +195,110 @@ function AddArticleModal({
       category,
       readTime: readTime.trim() || "5 min read",
       content: filledParagraphs,
-    };
-    onAdd(article);
+    });
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 py-8 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl my-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#274C77]/40 px-4 py-8">
+      <div className="my-auto w-full max-w-2xl rounded-2xl border border-[#274C77]/10 bg-white p-8 shadow-[0_8px_32px_rgba(39,76,119,0.14)]">
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 mb-1">
+            <p className="mb-1 font-sans text-xs font-bold uppercase tracking-[0.2em] text-[#6096BA]">
               Admin
             </p>
-            <h2 className="text-2xl font-bold">Add New Article</h2>
+            <h2 className="font-display text-3xl tracking-[-0.03em] text-[#274C77]">
+              Add New Article
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="rounded-lg p-2 text-[#274C77]/50 transition hover:bg-[#E7ECEF] hover:text-[#274C77]"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium mb-2">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. How to handle conflict at school"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Category</label>
-              <select
-                value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value as Exclude<Category, "All Resources">)
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                {ARTICLE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Read time</label>
+          {[
+            { label: "Title", value: title, setter: setTitle, placeholder: "e.g. How to handle conflict at school" },
+            { label: "Read time", value: readTime, setter: setReadTime, placeholder: "5 min read" },
+          ].map((field) => (
+            <div key={field.label}>
+              <label className="mb-2 block font-sans text-sm font-semibold text-[#274C77]">
+                {field.label}
+              </label>
               <input
                 type="text"
-                value={readTime}
-                onChange={(e) => setReadTime(e.target.value)}
-                placeholder="5 min read"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                value={field.value}
+                onChange={(e) => field.setter(e.target.value)}
+                placeholder={field.placeholder}
+                className="w-full rounded-lg border border-[#274C77]/15 bg-[#F8FBFD] px-4 py-3 text-sm text-[#274C77] outline-none transition focus:border-[#6096BA]/50 focus:ring-2 focus:ring-[#6096BA]/15"
               />
             </div>
+          ))}
+
+          <div>
+            <label className="mb-2 block font-sans text-sm font-semibold text-[#274C77]">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value as Exclude<Category, "All Resources">)
+              }
+              className="w-full rounded-lg border border-[#274C77]/15 bg-[#F8FBFD] px-4 py-3 text-sm text-[#274C77] outline-none transition focus:border-[#6096BA]/50 focus:ring-2 focus:ring-[#6096BA]/15"
+            >
+              {ARTICLE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Short description (shown on cards)
+            <label className="mb-2 block font-sans text-sm font-semibold text-[#274C77]">
+              Short description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              placeholder="A brief summary visible in the article list"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
+              className="w-full resize-none rounded-lg border border-[#274C77]/15 bg-[#F8FBFD] px-4 py-3 text-sm text-[#274C77] outline-none transition focus:border-[#6096BA]/50 focus:ring-2 focus:ring-[#6096BA]/15"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Intro paragraph (shown at top of article)
+            <label className="mb-2 block font-sans text-sm font-semibold text-[#274C77]">
+              Intro paragraph
             </label>
             <textarea
               value={intro}
               onChange={(e) => setIntro(e.target.value)}
               rows={3}
-              placeholder="An engaging opening paragraph"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
+              className="w-full resize-none rounded-lg border border-[#274C77]/15 bg-[#F8FBFD] px-4 py-3 text-sm text-[#274C77] outline-none transition focus:border-[#6096BA]/50 focus:ring-2 focus:ring-[#6096BA]/15"
             />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Content paragraphs</label>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="font-sans text-sm font-semibold text-[#274C77]">
+                Content paragraphs
+              </label>
               <button
                 onClick={addParagraph}
-                className="text-xs text-emerald-700 hover:underline flex items-center gap-1"
+                className="flex items-center gap-1 text-xs font-semibold text-[#6096BA] hover:text-[#274C77]"
               >
-                <Plus className="w-3 h-3" /> Add paragraph
+                <Plus className="h-3 w-3" /> Add paragraph
               </button>
             </div>
+
             <div className="space-y-3">
               {paragraphs.map((p, i) => (
                 <div key={i} className="flex gap-2">
@@ -317,14 +307,14 @@ function AddArticleModal({
                     onChange={(e) => handleParagraph(i, e.target.value)}
                     rows={3}
                     placeholder={`Paragraph ${i + 1}`}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
+                    className="flex-1 resize-none rounded-lg border border-[#274C77]/15 bg-[#F8FBFD] px-4 py-3 text-sm text-[#274C77] outline-none transition focus:border-[#6096BA]/50 focus:ring-2 focus:ring-[#6096BA]/15"
                   />
                   {paragraphs.length > 1 && (
                     <button
                       onClick={() => removeParagraph(i)}
-                      className="shrink-0 p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+                      className="shrink-0 rounded-lg p-2 text-[#274C77]/40 hover:bg-red-50 hover:text-red-500"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -336,13 +326,13 @@ function AddArticleModal({
         <div className="mt-8 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 border rounded-lg text-sm hover:bg-gray-50"
+            className="rounded-sm border border-[#274C77]/20 px-5 py-2.5 text-sm font-semibold text-[#274C77] hover:bg-[#F8FBFD]"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-5 py-2.5 bg-black text-white rounded-lg text-sm hover:bg-gray-800"
+            className="rounded-sm bg-[#274C77] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1F3C5F]"
           >
             Publish Article
           </button>
@@ -352,19 +342,17 @@ function AddArticleModal({
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export function KnowledgeBasePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
 
   const [articles, setArticles] = useState<Article[]>(loadArticles);
-  const [selectedCategory, setSelectedCategory] = useState<Category>("All Resources");
+  const [selectedCategory, setSelectedCategory] =
+    useState<Category>("All Resources");
   const [query, setQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // keep localStorage in sync
   useEffect(() => {
     saveArticles(articles);
   }, [articles]);
@@ -392,7 +380,7 @@ export function KnowledgeBasePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-[#E7ECEF] text-[#274C77]">
       <Header />
 
       {showAddModal && (
@@ -403,11 +391,18 @@ export function KnowledgeBasePage() {
       )}
 
       <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10 flex items-end justify-between gap-6">
+        <section className="relative overflow-hidden border-b border-[#274C77]/10 bg-[#E7ECEF]">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(#A3CEF1_1px,transparent_1px)] [background-size:30px_30px]" />
+
+          <div className="relative mx-auto flex max-w-7xl flex-col gap-6 px-8 py-12 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-5xl font-bold mb-3">Knowledge Base</h1>
-              <p className="text-lg text-gray-600 max-w-3xl">
+              <p className="mb-4 font-sans text-[12px] font-bold uppercase tracking-[0.22em] text-[#6096BA]">
+                SafeSpace resources
+              </p>
+              <h1 className="font-display text-[48px] leading-[1.05] tracking-[-0.04em] text-[#274C77] sm:text-[64px]">
+                Knowledge Base
+              </h1>
+              <p className="mt-4 max-w-3xl font-sans text-[17px] leading-[1.75] tracking-[-0.01em] text-[#274C77]/60">
                 Explore trusted resources about bullying, emotional wellbeing,
                 stress, and how to support yourself or others.
               </p>
@@ -416,139 +411,143 @@ export function KnowledgeBasePage() {
             {isAdmin && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 bg-black text-white px-5 py-3 rounded-lg text-sm hover:bg-gray-800 shrink-0"
+                className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-[#274C77] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1F3C5F]"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
                 Add Article
               </button>
             )}
           </div>
+        </section>
 
-          <div className="grid grid-cols-12 gap-8">
-            <aside className="col-span-3">
-              <div className="border rounded-xl p-6 sticky top-8">
-                <h2 className="font-semibold mb-4">Categories</h2>
+        <div className="mx-auto grid max-w-7xl gap-8 px-8 py-10 lg:grid-cols-12">
+          <aside className="lg:col-span-3">
+            <div className="sticky top-24 rounded-2xl border border-[#274C77]/10 bg-white p-6 shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+              <h2 className="mb-4 font-display text-2xl tracking-[-0.03em] text-[#274C77]">
+                Categories
+              </h2>
 
-                <div className="space-y-2">
-                  {ALL_CATEGORIES.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`block w-full text-left px-4 py-3 rounded-md text-sm ${
-                        selectedCategory === category
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-2">
+                {ALL_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`block w-full rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                      selectedCategory === category
+                        ? "bg-[#A3CEF1]/45 text-[#274C77]"
+                        : "text-[#274C77]/65 hover:bg-[#F8FBFD] hover:text-[#274C77]"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
               </div>
-            </aside>
+            </div>
+          </aside>
 
-            <section className="col-span-6">
-              <div className="flex items-center gap-3 border px-4 py-3 rounded-xl mb-6">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search resources"
-                  className="w-full outline-none text-sm"
-                />
-              </div>
+          <section className="lg:col-span-6">
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#274C77]/10 bg-white px-4 py-3 shadow-[0_8px_32px_rgba(39,76,119,0.06)]">
+              <Search className="h-4 w-4 text-[#274C77]/40" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search resources"
+                className="w-full bg-transparent text-sm text-[#274C77] outline-none placeholder:text-[#274C77]/35"
+              />
+            </div>
 
-              {filteredArticles.length === 0 ? (
-                <div className="border rounded-xl p-8 text-center">
-                  <h3 className="text-xl font-semibold mb-2">No resources found</h3>
-                  <p className="text-sm text-gray-600">
-                    Try another category or search with different keywords.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredArticles.map((article) => (
-                    <article
-                      key={article.id}
-                      onClick={() => navigate(`/knowledge-base/${article.id}`)}
-                      className="border rounded-xl p-6 hover:shadow-md cursor-pointer transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                          {article.category}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {article.readTime}
-                        </span>
-                      </div>
-
-                      <h3 className="text-xl font-semibold mb-2">
-                        {article.title}
-                      </h3>
-
-                      <p className="text-sm text-gray-600 leading-6 mb-4">
-                        {article.description}
-                      </p>
-
-                      <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
-                        Read article
-                        <ArrowRight className="w-4 h-4" />
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <aside className="col-span-3 space-y-6">
-              <div className="border rounded-xl p-6 bg-emerald-50">
-                <div className="flex items-start gap-3 mb-3">
-                  <LifeBuoy className="w-5 h-5 text-emerald-700 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold">Need immediate help?</h3>
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-700 leading-6 mb-4">
-                  If you are in distress or feel unsafe, do not wait. Use the
-                  anonymous report form or contact crisis support now.
+            {filteredArticles.length === 0 ? (
+              <div className="rounded-2xl border border-[#274C77]/10 bg-white p-8 text-center shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+                <h3 className="mb-2 font-display text-2xl tracking-[-0.03em] text-[#274C77]">
+                  No resources found
+                </h3>
+                <p className="text-sm leading-6 text-[#274C77]/60">
+                  Try another category or search with different keywords.
                 </p>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={() => navigate("/report")}
-                    className="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800"
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredArticles.map((article) => (
+                  <article
+                    key={article.id}
+                    onClick={() => navigate(`/knowledge-base/${article.id}`)}
+                    className="cursor-pointer rounded-2xl border border-[#274C77]/10 bg-white p-6 shadow-[0_8px_32px_rgba(39,76,119,0.06)] transition hover:-translate-y-0.5 hover:border-[#6096BA]/40 hover:shadow-[0_12px_36px_rgba(39,76,119,0.10)]"
                   >
-                    Anonymous Report
-                  </button>
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                      <span className="rounded-full bg-[#A3CEF1]/45 px-3 py-1 text-xs font-semibold text-[#274C77]">
+                        {article.category}
+                      </span>
+                      <span className="text-xs text-[#274C77]/45">
+                        {article.readTime}
+                      </span>
+                    </div>
 
-                  <button
-                    onClick={() => navigate("/forum")}
-                    className="w-full border py-3 rounded-md hover:bg-gray-50"
-                  >
-                    Support Forum
-                  </button>
-                </div>
+                    <h3 className="mb-2 font-display text-2xl tracking-[-0.03em] text-[#274C77]">
+                      {article.title}
+                    </h3>
+
+                    <p className="mb-4 text-sm leading-6 text-[#274C77]/60">
+                      {article.description}
+                    </p>
+
+                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#6096BA]">
+                      Read article
+                      <ArrowRight className="h-4 w-4" />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <aside className="space-y-6 lg:col-span-3">
+            <div className="rounded-2xl border border-[#274C77]/10 bg-[#A3CEF1]/35 p-6 shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+              <div className="mb-3 flex items-start gap-3">
+                <LifeBuoy className="mt-0.5 h-5 w-5 text-[#274C77]" />
+                <h3 className="font-display text-2xl tracking-[-0.03em] text-[#274C77]">
+                  Need immediate help?
+                </h3>
               </div>
 
-              <div className="border rounded-xl p-6">
-                <div className="flex items-start gap-3 mb-3">
-                  <BookOpen className="w-5 h-5 text-gray-700 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold">Featured topics</h4>
-                  </div>
-                </div>
+              <p className="mb-4 text-sm leading-6 text-[#274C77]/65">
+                If you are in distress or feel unsafe, do not wait. Use the
+                anonymous report form or contact crisis support now.
+              </p>
 
-                <div className="space-y-3 text-sm text-gray-600">
-                  <p>• Recognizing bullying patterns</p>
-                  <p>• Managing emotional stress</p>
-                  <p>• Helping a friend safely</p>
-                  <p>• Building healthy coping habits</p>
-                </div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate("/report")}
+                  className="w-full rounded-sm bg-[#274C77] py-3 text-sm font-semibold text-white transition hover:bg-[#1F3C5F]"
+                >
+                  Anonymous Report
+                </button>
+
+                <button
+                  onClick={() => navigate("/forum")}
+                  className="w-full rounded-sm border border-[#274C77]/20 bg-white/60 py-3 text-sm font-semibold text-[#274C77] transition hover:bg-white"
+                >
+                  Support Forum
+                </button>
               </div>
-            </aside>
-          </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#274C77]/10 bg-white p-6 shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+              <div className="mb-3 flex items-start gap-3">
+                <BookOpen className="mt-0.5 h-5 w-5 text-[#274C77]/70" />
+                <h4 className="font-display text-2xl tracking-[-0.03em] text-[#274C77]">
+                  Featured topics
+                </h4>
+              </div>
+
+              <div className="space-y-3 text-sm leading-6 text-[#274C77]/60">
+                <p>• Recognizing bullying patterns</p>
+                <p>• Managing emotional stress</p>
+                <p>• Helping a friend safely</p>
+                <p>• Building healthy coping habits</p>
+              </div>
+            </div>
+          </aside>
         </div>
       </main>
 

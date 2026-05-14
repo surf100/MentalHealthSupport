@@ -1,9 +1,11 @@
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
-import { Clock3, Eye, FileText, Search } from "lucide-react";
+import { Clock3, Eye, FileText, Search, AlertCircle, RefreshCw, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyReports, ReportResponse, ReportStatus } from "../api/report-api";
+
+// ─── constants ────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
   SUBMITTED: "Submitted",
@@ -14,19 +16,37 @@ const STATUS_LABELS: Record<ReportStatus, string> = {
 const STATUS_FILTER_VALUES = ["All", "SUBMITTED", "UNDER_REVIEW", "RESOLVED"] as const;
 type StatusFilter = (typeof STATUS_FILTER_VALUES)[number];
 
-function getStatusClasses(status: ReportStatus) {
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+function getStatusStyle(status: ReportStatus): { bg: string; color: string; dot: string } {
   switch (status) {
-    case "SUBMITTED":    return "bg-blue-50 text-blue-700";
-    case "UNDER_REVIEW": return "bg-amber-50 text-amber-700";
-    case "RESOLVED":     return "bg-emerald-50 text-emerald-700";
-    default:             return "bg-gray-50 text-gray-700";
+    case "SUBMITTED":
+      return { bg: "rgba(136,187,214,0.10)", color: "#6096BA", dot: "#6096BA" };
+    case "UNDER_REVIEW":
+      return { bg: "rgba(232,160,32,0.12)", color: "#b97a0a", dot: "#e8a020" };
+    case "RESOLVED":
+      return { bg: "rgba(36,76,90,0.08)", color: "rgba(36,76,90,0.60)", dot: "rgba(36,76,90,0.40)" };
+    default:
+      return { bg: "rgba(36,76,90,0.06)", color: "rgba(36,76,90,0.50)", dot: "rgba(36,76,90,0.30)" };
   }
 }
 
-// "MENTAL_HEALTH" → "Mental Health"
 function formatCategory(raw: string) {
   return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+// ─── skeleton ─────────────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded ${className ?? ""}`}
+      style={{ backgroundColor: "rgba(36,76,90,0.07)" }}
+    />
+  );
+}
+
+// ─── component ────────────────────────────────────────────────────────────────
 
 export function MyReportsPage() {
   const navigate = useNavigate();
@@ -35,6 +55,10 @@ export function MyReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("All");
   const [query, setQuery] = useState("");
+
+  // hover states
+  const [hoveredReport, setHoveredReport] = useState<string | null>(null);
+  const [hoveredFilter, setHoveredFilter] = useState<string | null>(null);
 
   useEffect(() => {
     getMyReports()
@@ -59,140 +83,448 @@ export function MyReportsPage() {
     });
   }, [query, selectedStatus, reports]);
 
+  // counts per status for sidebar badges
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: reports.length };
+    for (const r of reports) {
+      counts[r.status] = (counts[r.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [reports]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F6F8F9" }}>
       <Header />
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10">
-            <h1 className="text-5xl font-bold mb-3">My Reports</h1>
-            <p className="text-lg text-gray-600 max-w-3xl">
+      {/* ── hero strip ── */}
+      <div className="relative overflow-hidden" style={{ backgroundColor: "#F9F7F3" }}>
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#6096BA 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-8 py-10 flex items-end justify-between">
+          <div>
+            <p
+              className="font-sans font-bold uppercase tracking-[0.20em] mb-2"
+              style={{ fontSize: 11, color: "#6096BA" }}
+            >
+              Reports
+            </p>
+            <h1
+              className="font-serif"
+              style={{
+                fontSize: 38,
+                letterSpacing: "-0.04em",
+                color: "#274C77",
+                lineHeight: 1.15,
+                fontFamily: "DM Serif Display, serif",
+              }}
+            >
+              My Reports
+            </h1>
+            <p
+              className="font-sans mt-2"
+              style={{
+                fontSize: 15,
+                color: "rgba(36,76,90,0.65)",
+                letterSpacing: "-0.01em",
+                lineHeight: 1.75,
+              }}
+            >
               Track the status of your submitted reports and review their details.
             </p>
           </div>
 
+          {/* summary pill */}
+          {!isLoading && !error && reports.length > 0 && (
+            <div
+              className="hidden md:flex items-center gap-3 rounded-xl px-5 py-3 mb-1"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.55)",
+                border: "1px solid rgba(136,187,214,0.15)",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <FileText className="w-4 h-4" style={{ color: "#6096BA" }} />
+              <span
+                className="font-sans font-semibold"
+                style={{ fontSize: 13, color: "#274C77" }}
+              >
+                {reports.length} {reports.length === 1 ? "report" : "reports"} total
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-8 py-10">
           <div className="grid grid-cols-12 gap-8">
-            {/* Sidebar filter */}
+
+            {/* ── sidebar ── */}
             <aside className="col-span-3">
-              <div className="border rounded-xl p-6 sticky top-8">
-                <h2 className="font-semibold mb-4">Filter by Status</h2>
-                <div className="space-y-2">
-                  {STATUS_FILTER_VALUES.map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setSelectedStatus(status)}
-                      className={`block w-full text-left px-4 py-3 rounded-md text-sm ${
-                        selectedStatus === status
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      {status === "All" ? "All" : STATUS_LABELS[status as ReportStatus]}
-                    </button>
-                  ))}
+              <div
+                className="rounded-2xl p-6 sticky top-8"
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid rgba(136,187,214,0.10)",
+                  boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                }}
+              >
+                <p
+                  className="font-sans font-bold uppercase tracking-[0.20em] mb-4"
+                  style={{ fontSize: 11, color: "#6096BA" }}
+                >
+                  Filter
+                </p>
+
+                <div className="space-y-1">
+                  {STATUS_FILTER_VALUES.map((status) => {
+                    const isActive = selectedStatus === status;
+                    const label = status === "All" ? "All Reports" : STATUS_LABELS[status as ReportStatus];
+                    const count = statusCounts[status] ?? 0;
+
+                    return (
+                      <button
+                        key={status}
+                        onClick={() => setSelectedStatus(status)}
+                        onMouseEnter={() => setHoveredFilter(status)}
+                        onMouseLeave={() => setHoveredFilter(null)}
+                        className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-all"
+                        style={{
+                          backgroundColor: isActive
+                            ? "rgba(136,187,214,0.10)"
+                            : hoveredFilter === status
+                            ? "rgba(36,76,90,0.04)"
+                            : "transparent",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {/* status dot */}
+                          {status !== "All" && (
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{
+                                backgroundColor: getStatusStyle(status as ReportStatus).dot,
+                              }}
+                            />
+                          )}
+                          <span
+                            className="font-sans"
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "#6096BA" : "rgba(36,76,90,0.70)",
+                              letterSpacing: "-0.01em",
+                            }}
+                          >
+                            {label}
+                          </span>
+                        </div>
+                        {count > 0 && (
+                          <span
+                            className="font-sans font-semibold rounded-full px-2 py-0.5"
+                            style={{
+                              fontSize: 11,
+                              backgroundColor: isActive ? "rgba(136,187,214,0.15)" : "rgba(36,76,90,0.07)",
+                              color: isActive ? "#6096BA" : "rgba(36,76,90,0.50)",
+                            }}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* submit CTA */}
+                <div
+                  className="mt-6 pt-5"
+                  style={{ borderTop: "1px solid rgba(36,76,90,0.07)" }}
+                >
+                  <button
+                    onClick={() => navigate("/report")}
+                    className="w-full flex items-center justify-center gap-2 font-sans font-semibold text-white rounded-sm py-2.5"
+                    style={{ fontSize: 13, backgroundColor: "#6096BA", cursor: "pointer" }}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Submit New Report
+                  </button>
                 </div>
               </div>
             </aside>
 
-            {/* Main content */}
-            <section className="col-span-9">
-              <div className="flex items-center gap-3 border px-4 py-3 rounded-xl mb-6">
-                <Search className="w-4 h-4 text-gray-400" />
+            {/* ── main content ── */}
+            <section className="col-span-9 space-y-5">
+
+              {/* search bar */}
+              <div
+                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid rgba(36,76,90,0.15)",
+                  boxShadow: "0 2px 12px rgba(36,76,90,0.06)",
+                }}
+              >
+                <Search className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(36,76,90,0.35)" }} />
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by reference, category, or title"
-                  className="w-full outline-none text-sm"
+                  placeholder="Search by reference, category, or title…"
+                  className="w-full outline-none font-sans bg-transparent"
+                  style={{
+                    fontSize: 14,
+                    color: "#274C77",
+                    letterSpacing: "-0.01em",
+                  }}
                 />
               </div>
 
-              {/* Loading */}
+              {/* ── loading ── */}
               {isLoading && (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="border rounded-xl p-6 animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-32 mb-3" />
-                      <div className="h-5 bg-gray-200 rounded w-48 mb-2" />
-                      <div className="h-4 bg-gray-200 rounded w-full" />
+                    <div
+                      key={i}
+                      className="rounded-2xl p-6"
+                      style={{
+                        backgroundColor: "#fff",
+                        border: "1px solid rgba(136,187,214,0.10)",
+                        boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex gap-3">
+                            <Skeleton className="h-5 w-28" />
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                          </div>
+                          <Skeleton className="h-5 w-40" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </div>
+                        <Skeleton className="h-9 w-28 rounded-sm flex-shrink-0" />
+                      </div>
+                      <Skeleton className="h-4 w-36 mt-2" />
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Error */}
+              {/* ── error ── */}
               {!isLoading && error && (
-                <div className="border border-red-200 bg-red-50 rounded-xl p-8 text-center">
-                  <p className="text-red-700 font-medium mb-2">Failed to load reports</p>
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {!isLoading && !error && filteredReports.length === 0 && (
-                <div className="border rounded-xl p-10 text-center">
-                  <h3 className="text-xl font-semibold mb-2">No reports found</h3>
-                  <p className="text-sm text-gray-600 mb-5">
-                    {reports.length === 0
-                      ? "You haven't submitted any reports yet."
-                      : "Try another filter or search term."}
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div
+                    className="flex items-center justify-center rounded-2xl mb-5"
+                    style={{ width: 64, height: 64, backgroundColor: "rgba(220,38,38,0.08)" }}
+                  >
+                    <AlertCircle className="w-7 h-7" style={{ color: "#dc2626" }} />
+                  </div>
+                  <h3
+                    className="font-serif mb-2"
+                    style={{
+                      fontSize: 22,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                    }}
+                  >
+                    Failed to load reports
+                  </h3>
+                  <p
+                    className="font-sans mb-6"
+                    style={{ fontSize: 14, color: "rgba(36,76,90,0.55)", maxWidth: 320 }}
+                  >
+                    {error}
                   </p>
                   <button
-                    onClick={() => navigate("/report")}
-                    className="bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800"
+                    onClick={() => window.location.reload()}
+                    className="inline-flex items-center gap-2 font-sans font-semibold text-white rounded-sm px-5 py-2.5"
+                    style={{ fontSize: 14, backgroundColor: "#6096BA", cursor: "pointer" }}
                   >
-                    Submit Report
+                    <RefreshCw className="w-4 h-4" />
+                    Try again
                   </button>
                 </div>
               )}
 
-              {/* Report list */}
+              {/* ── empty state ── */}
+              {!isLoading && !error && filteredReports.length === 0 && (
+                <div
+                  className="flex flex-col items-center justify-center rounded-2xl py-20 text-center"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center rounded-2xl mb-4"
+                    style={{ width: 56, height: 56, backgroundColor: "rgba(198,209,102,0.25)" }}
+                  >
+                    <FileText className="w-6 h-6" style={{ color: "#6096BA" }} />
+                  </div>
+                  <h3
+                    className="font-serif mb-2"
+                    style={{
+                      fontSize: 22,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                    }}
+                  >
+                    {reports.length === 0 ? "No reports yet" : "No results found"}
+                  </h3>
+                  <p
+                    className="font-sans mb-6"
+                    style={{
+                      fontSize: 14,
+                      color: "rgba(36,76,90,0.55)",
+                      maxWidth: 300,
+                      lineHeight: 1.65,
+                    }}
+                  >
+                    {reports.length === 0
+                      ? "Your submitted reports will appear here. Everything is anonymous and encrypted."
+                      : "Try a different filter or search term."}
+                  </p>
+                  {reports.length === 0 && (
+                    <button
+                      onClick={() => navigate("/report")}
+                      className="inline-flex items-center gap-2 font-sans font-semibold text-white rounded-sm px-5 py-2.5"
+                      style={{ fontSize: 14, backgroundColor: "#6096BA", cursor: "pointer" }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Submit a Report
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── report list ── */}
               {!isLoading && !error && filteredReports.length > 0 && (
                 <div className="space-y-4">
-                  {filteredReports.map((report) => (
-                    <article
-                      key={report.id}
-                      className="border rounded-xl p-6 hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-900">
-                              <FileText className="w-4 h-4" />
-                              {report.reference}
-                            </span>
-                            <span
-                              className={`text-xs px-3 py-1 rounded-full ${getStatusClasses(report.status)}`}
+                  {filteredReports.map((report) => {
+                    const statusStyle = getStatusStyle(report.status);
+                    const isHovered = hoveredReport === report.id;
+
+                    return (
+                      <article
+                        key={report.id}
+                        onMouseEnter={() => setHoveredReport(report.id)}
+                        onMouseLeave={() => setHoveredReport(null)}
+                        className="rounded-2xl overflow-hidden transition-all"
+                        style={{
+                          backgroundColor: "#fff",
+                          border: "1px solid rgba(136,187,214,0.10)",
+                          boxShadow: isHovered
+                            ? "0 12px 40px rgba(36,76,90,0.13)"
+                            : "0 8px 40px rgba(36,76,90,0.08)",
+                          transform: isHovered ? "translateY(-1px)" : "translateY(0)",
+                        }}
+                      >
+                        {/* status accent bar */}
+                        <div style={{ height: 3, backgroundColor: statusStyle.dot }} />
+
+                        <div className="p-6">
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="flex-1 min-w-0">
+
+                              {/* reference + status badge */}
+                              <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+                                <span
+                                  className="inline-flex items-center gap-1.5 font-sans font-semibold"
+                                  style={{ fontSize: 12, color: "rgba(36,76,90,0.50)" }}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  {report.reference}
+                                </span>
+                                <span
+                                  className="inline-flex items-center gap-1.5 font-sans font-semibold rounded-full px-3 py-1"
+                                  style={{
+                                    fontSize: 11,
+                                    backgroundColor: statusStyle.bg,
+                                    color: statusStyle.color,
+                                  }}
+                                >
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: statusStyle.dot }}
+                                  />
+                                  {STATUS_LABELS[report.status]}
+                                </span>
+                              </div>
+
+                              {/* category */}
+                              <h3
+                                className="font-serif mb-1.5"
+                                style={{
+                                  fontSize: 19,
+                                  letterSpacing: "-0.03em",
+                                  color: "#274C77",
+                                  fontFamily: "DM Serif Display, serif",
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {formatCategory(report.category)}
+                              </h3>
+
+                              {/* title */}
+                              <p
+                                className="font-sans"
+                                style={{
+                                  fontSize: 14,
+                                  color: "rgba(36,76,90,0.60)",
+                                  letterSpacing: "-0.01em",
+                                  lineHeight: 1.65,
+                                }}
+                              >
+                                {report.title}
+                              </p>
+                            </div>
+
+                            {/* view button */}
+                            <button
+                              onClick={() => navigate(`/my-reports/${report.id}`)}
+                              className="shrink-0 inline-flex items-center gap-2 font-sans font-semibold rounded-sm px-4 py-2"
+                              style={{
+                                fontSize: 13,
+                                color: "#274C77",
+                                border: "1px solid rgba(36,76,90,0.20)",
+                                backgroundColor: "transparent",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
                             >
-                              {STATUS_LABELS[report.status]}
-                            </span>
+                              <Eye className="w-3.5 h-3.5" />
+                              View Details
+                              <ChevronRight className="w-3 h-3 opacity-40" />
+                            </button>
                           </div>
 
-                          <h3 className="text-xl font-semibold mb-2">
-                            {formatCategory(report.category)}
-                          </h3>
-
-                          <p className="text-sm text-gray-600 leading-6 max-w-3xl">
-                            {report.title}
-                          </p>
+                          {/* footer */}
+                          <div
+                            className="flex items-center gap-2 pt-4"
+                            style={{ borderTop: "1px solid rgba(36,76,90,0.07)" }}
+                          >
+                            <Clock3 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "rgba(36,76,90,0.35)" }} />
+                            <span
+                              className="font-sans"
+                              style={{ fontSize: 12, color: "rgba(36,76,90,0.45)", letterSpacing: "-0.01em" }}
+                            >
+                              Submitted on {report.createdAt}
+                            </span>
+                          </div>
                         </div>
-
-                        <button
-                          onClick={() => navigate(`/my-reports/${report.id}`)}
-                          className="shrink-0 border px-4 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-500 pt-4 border-t">
-                        <Clock3 className="w-4 h-4" />
-                        Submitted on {report.createdAt}
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>

@@ -7,178 +7,177 @@ export function ReportSubmittedPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Use real report ID from navigation state; fallback for direct URL access
   const reportId: number | undefined = location.state?.reportId;
   const referenceId = reportId
     ? `RS-${reportId}`
     : `RS-${Math.floor(10000 + Math.random() * 90000)}`;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#E7ECEF] text-[#274C77]">
       <Header />
 
-      <main className="flex-1 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-8 py-12">
-          {/* Main Confirmation Card */}
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center mb-8">
-            {/* Success Icon */}
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-12 h-12 text-emerald-600" />
-              </div>
-            </div>
+      <main className="flex-1">
+        <section className="relative overflow-hidden border-b border-[#274C77]/10 bg-[#E7ECEF]">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:radial-gradient(#A3CEF1_1px,transparent_1px)] [background-size:30px_30px]" />
 
-            {/* Main Heading */}
-            <h1 className="text-4xl font-bold mb-4">Your report has been submitted</h1>
-
-            {/* Supporting Text */}
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              Thank you for speaking up. Our moderation team will review your report and
-              determine the best way to respond.
-            </p>
-
-            {/* Reference Number */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8 max-w-md mx-auto">
-              <p className="text-sm text-gray-600 mb-2">Report Reference ID</p>
-              <p className="text-2xl font-bold text-gray-900">{referenceId}</p>
-              <p className="text-xs text-gray-500 mt-2">Save this ID to track your report</p>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex items-center justify-center gap-4">
-              <button
-                onClick={() => navigate("/")}
-                className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
-              >
-                Return to Home
-              </button>
-              <button
-                onClick={() => navigate("/report")}
-                className="bg-white text-black px-6 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
-              >
-                Submit Another Report
-              </button>
-            </div>
-          </div>
-
-          {/* What Happens Next Section */}
-          <div className="bg-white border border-gray-200 rounded-xl p-8 mb-8">
-            <h2 className="text-2xl font-bold mb-6">What happens next?</h2>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-                </div>
-                <div>
-                  <p className="text-gray-900 font-medium">Our moderators will review the report</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    A trained team member will carefully assess the situation and context.
-                  </p>
+          <div className="relative mx-auto max-w-4xl px-8 py-14">
+            <div className="rounded-2xl border border-[#274C77]/10 bg-white p-10 text-center shadow-[0_8px_32px_rgba(39,76,119,0.08)] sm:p-12">
+              <div className="mb-6 flex justify-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#A3CEF1]/45">
+                  <CheckCircle className="h-12 w-12 text-[#274C77]" />
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-                </div>
-                <div>
-                  <p className="text-gray-900 font-medium">Urgent cases are prioritized</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    If you marked this as urgent, it will be reviewed within 24 hours.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-                </div>
-                <div>
-                  <p className="text-gray-900 font-medium">
-                    You may be contacted if you provided optional contact details
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    If you included your email, we may reach out for additional information or
-                    to provide support resources.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Support Reminder Section */}
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 flex items-start gap-4">
-            <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-red-900 font-medium mb-2">Need immediate help?</p>
-              <p className="text-sm text-red-800 mb-3">
-                If you need immediate help or feel unsafe right now, please visit the Crisis
-                Help page.
+              <p className="mb-4 font-sans text-[12px] font-bold uppercase tracking-[0.22em] text-[#6096BA]">
+                Report submitted
               </p>
-              <a
-                href="#"
-                className="inline-flex items-center gap-2 text-sm font-medium text-red-700 hover:text-red-800"
-              >
-                Go to Crisis Help <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
 
-          {/* Support Resources Section */}
-          <div className="bg-white border border-gray-200 rounded-xl p-8">
-            <h2 className="text-2xl font-bold mb-6">Additional Resources</h2>
+              <h1 className="mb-4 font-display text-[42px] leading-[1.05] tracking-[-0.04em] text-[#274C77] sm:text-[56px]">
+                Your report has been submitted
+              </h1>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Knowledge Base</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Learn more about bullying prevention, safety planning, and mental health
-                  support.
+              <p className="mx-auto mb-8 max-w-2xl font-sans text-[17px] leading-[1.75] tracking-[-0.01em] text-[#274C77]/60">
+                Thank you for speaking up. Our moderation team will review your
+                report and determine the safest way to respond.
+              </p>
+
+              <div className="mx-auto mb-8 max-w-md rounded-2xl border border-[#274C77]/10 bg-[#F8FBFD] p-6">
+                <p className="mb-2 font-sans text-sm text-[#274C77]/55">
+                  Report Reference ID
                 </p>
-                <a
-                  href="#"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700"
-                >
-                  Visit Knowledge Base <ExternalLink className="w-4 h-4" />
-                </a>
+                <p className="font-display text-3xl tracking-[-0.03em] text-[#274C77]">
+                  {referenceId}
+                </p>
+                <p className="mt-2 font-sans text-xs text-[#274C77]/45">
+                  Save this ID to track your report
+                </p>
               </div>
 
-              <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Support Forum</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Connect with peers who understand what you're going through.
-                </p>
-                <a
-                  href="#"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+              <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <button
+                  onClick={() => navigate("/")}
+                  className="rounded-sm bg-[#274C77] px-6 py-3 font-sans text-sm font-semibold text-white transition hover:bg-[#1F3C5F]"
                 >
-                  Join the Forum <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
-
-              <div className="p-6 bg-purple-50 border border-purple-200 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Chat Support</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Talk to a trained counselor anonymously, available 24/7.
-                </p>
-                <button className="inline-flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700">
-                  Start Chat <ExternalLink className="w-4 h-4" />
+                  Return to Home
+                </button>
+                <button
+                  onClick={() => navigate("/report")}
+                  className="rounded-sm border border-[#274C77]/20 bg-white px-6 py-3 font-sans text-sm font-semibold text-[#274C77] transition hover:border-[#274C77]/40 hover:bg-[#F8FBFD]"
+                >
+                  Submit Another Report
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
 
-              <div className="p-6 bg-orange-50 border border-orange-200 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Safety Guide</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Create a personalized safety plan for yourself or someone you care about.
-                </p>
-                <a
-                  href="#"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700"
+        <div className="mx-auto max-w-4xl px-8 py-10">
+          <div className="rounded-2xl border border-[#274C77]/10 bg-white p-8 shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+            <h2 className="mb-6 font-display text-3xl tracking-[-0.03em] text-[#274C77]">
+              What happens next?
+            </h2>
+
+            <div className="space-y-5">
+              {[
+                {
+                  title: "Our moderators will review the report",
+                  text: "A trained team member will carefully assess the situation and context.",
+                },
+                {
+                  title: "Urgent cases are prioritized",
+                  text: "If you marked this as urgent, it will be reviewed as quickly as possible.",
+                },
+                {
+                  title: "You may be contacted if you provided optional contact details",
+                  text: "If you included your email, we may reach out for additional information or to provide support resources.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex items-start gap-4">
+                  <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#A3CEF1]/45">
+                    <div className="h-2 w-2 rounded-full bg-[#6096BA]" />
+                  </div>
+                  <div>
+                    <p className="font-sans font-semibold text-[#274C77]">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 font-sans text-sm leading-6 text-[#274C77]/60">
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-6">
+            <AlertCircle className="mt-0.5 h-6 w-6 flex-shrink-0 text-red-600" />
+            <div>
+              <p className="mb-2 font-sans font-semibold text-red-900">
+                Need immediate help?
+              </p>
+              <p className="mb-3 font-sans text-sm leading-6 text-red-800">
+                If you need immediate help or feel unsafe right now, please
+                visit the Crisis Help page.
+              </p>
+              <button
+                onClick={() => navigate("/crisis-help")}
+                className="inline-flex items-center gap-2 font-sans text-sm font-semibold text-red-700 transition hover:text-red-900"
+              >
+                Go to Crisis Help <ExternalLink className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-[#274C77]/10 bg-white p-8 shadow-[0_8px_32px_rgba(39,76,119,0.08)]">
+            <h2 className="mb-6 font-display text-3xl tracking-[-0.03em] text-[#274C77]">
+              Additional resources
+            </h2>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              {[
+                {
+                  title: "Knowledge Base",
+                  text: "Learn more about bullying prevention, safety planning, and mental health support.",
+                  label: "Visit Knowledge Base",
+                  action: () => navigate("/knowledge-base"),
+                },
+                {
+                  title: "Support Forum",
+                  text: "Connect with peers who understand what you're going through.",
+                  label: "Join the Forum",
+                  action: () => navigate("/forum"),
+                },
+                {
+                  title: "Chat Support",
+                  text: "Talk to a trained counselor anonymously, available 24/7.",
+                  label: "Start Chat",
+                  action: () => {},
+                },
+                {
+                  title: "Safety Guide",
+                  text: "Create a personalized safety plan for yourself or someone you care about.",
+                  label: "Learn More",
+                  action: () => navigate("/knowledge-base"),
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-[#274C77]/10 bg-[#F8FBFD] p-6 transition hover:border-[#6096BA]/50 hover:bg-white"
                 >
-                  Learn More <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
+                  <h3 className="mb-2 font-display text-xl tracking-[-0.03em] text-[#274C77]">
+                    {item.title}
+                  </h3>
+                  <p className="mb-4 font-sans text-sm leading-6 text-[#274C77]/60">
+                    {item.text}
+                  </p>
+                  <button
+                    onClick={item.action}
+                    className="inline-flex items-center gap-2 font-sans text-sm font-semibold text-[#6096BA] transition hover:text-[#274C77]"
+                  >
+                    {item.label} <ExternalLink className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>

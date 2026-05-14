@@ -27,7 +27,7 @@ import { applyThemePreference } from "../lib/theme";
 
 type AccountSection = "nickname" | "email" | "password";
 
-// ─── Toggle component ─────────────────────────────────────────────────────────
+// ─── Toggle ───────────────────────────────────────────────────────────────────
 
 function Toggle({
   checked,
@@ -43,24 +43,110 @@ function Toggle({
       type="button"
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 ${
-        checked ? "bg-emerald-500" : "bg-gray-200"
-      }`}
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        height: "24px",
+        width: "44px",
+        alignItems: "center",
+        borderRadius: "99px",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "background-color 0.2s",
+        backgroundColor: checked ? "#274C77" : "rgba(39,76,119,0.18)",
+        opacity: disabled ? 0.5 : 1,
+        flexShrink: 0,
+        outline: "none",
+      }}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
+        style={{
+          display: "inline-block",
+          width: "16px",
+          height: "16px",
+          borderRadius: "50%",
+          background: "#FFFFFF",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+          transition: "transform 0.2s",
+          transform: checked ? "translateX(22px)" : "translateX(4px)",
+        }}
       />
     </button>
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        fontFamily: "DM Sans, sans-serif",
+        fontSize: "11px",
+        fontWeight: 700,
+        letterSpacing: "0.20em",
+        textTransform: "uppercase",
+        color: "rgba(39,76,119,0.40)",
+        marginBottom: "12px",
+        paddingLeft: "4px",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
 
 function SettingsCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border rounded-xl overflow-hidden divide-y">{children}</div>
+    <div
+      style={{
+        background: "#FFFFFF",
+        border: "1px solid rgba(39,76,119,0.10)",
+        borderRadius: "18px",
+        overflow: "hidden",
+        boxShadow: "0 2px 12px rgba(39,76,119,0.06)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardDivider() {
+  return (
+    <div style={{ height: "1px", background: "rgba(39,76,119,0.08)", margin: "0" }} />
+  );
+}
+
+function IconBox({
+  children,
+  tint = "ice",
+}: {
+  children: React.ReactNode;
+  tint?: "ice" | "calm" | "muted";
+}) {
+  const bg =
+    tint === "ice"
+      ? "rgba(163,206,241,0.30)"
+      : tint === "calm"
+      ? "rgba(96,150,186,0.18)"
+      : "rgba(39,76,119,0.08)";
+
+  return (
+    <div
+      style={{
+        width: "38px",
+        height: "38px",
+        borderRadius: "10px",
+        background: bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -70,31 +156,70 @@ function SettingsRow({
   value,
   onClick,
   open,
+  tint,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   onClick: () => void;
   open: boolean;
+  tint?: "ice" | "calm" | "muted";
 }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-colors text-left"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "18px 24px",
+        background: hovered ? "rgba(163,206,241,0.08)" : "transparent",
+        border: "none",
+        cursor: "pointer",
+        textAlign: "left",
+        transition: "background 0.15s",
+      }}
     >
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-          {icon}
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <IconBox tint={tint}>{icon}</IconBox>
         <div>
-          <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-          <p className="font-medium text-sm">{value}</p>
+          <p
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "11px",
+              fontWeight: 600,
+              color: "rgba(39,76,119,0.45)",
+              margin: "0 0 3px",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {label}
+          </p>
+          <p
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#274C77",
+              margin: 0,
+            }}
+          >
+            {value}
+          </p>
         </div>
       </div>
       <ChevronRight
-        className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
-          open ? "rotate-90" : ""
-        }`}
+        className="w-4 h-4 shrink-0"
+        style={{
+          color: "rgba(39,76,119,0.30)",
+          transition: "transform 0.2s",
+          transform: open ? "rotate(90deg)" : "rotate(0deg)",
+        }}
       />
     </button>
   );
@@ -102,7 +227,18 @@ function SettingsRow({
 
 function SettingsExpandPanel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-t px-6 py-5 bg-gray-50 space-y-4">{children}</div>
+    <div
+      style={{
+        padding: "20px 24px",
+        background: "#F8FBFD",
+        borderTop: "1px solid rgba(39,76,119,0.07)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "16px",
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -119,15 +255,43 @@ function InputField({
   onChange: (v: string) => void;
   autoComplete?: string;
 }) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <div>
-      <label className="block text-sm font-medium mb-1.5">{label}</label>
+      <label
+        style={{
+          display: "block",
+          fontFamily: "DM Sans, sans-serif",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "#274C77",
+          marginBottom: "8px",
+        }}
+      >
+        {label}
+      </label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
-        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          fontFamily: "DM Sans, sans-serif",
+          fontSize: "14px",
+          color: "#274C77",
+          background: "#FFFFFF",
+          border: `1px solid ${focused ? "rgba(96,150,186,0.65)" : "rgba(39,76,119,0.15)"}`,
+          borderRadius: "10px",
+          outline: "none",
+          boxShadow: focused ? "0 0 0 3px rgba(96,150,186,0.12)" : "none",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+          boxSizing: "border-box",
+        }}
       />
     </div>
   );
@@ -146,18 +310,48 @@ function ActionButtons({
   disabled?: boolean;
   saveLabel?: string;
 }) {
+  const [saveHovered, setSaveHovered] = useState(false);
+  const [cancelHovered, setCancelHovered] = useState(false);
+  const isDisabled = isSaving || disabled;
+
   return (
-    <div className="flex gap-3 pt-1">
+    <div style={{ display: "flex", gap: "10px", paddingTop: "4px" }}>
       <button
         onClick={onSave}
-        disabled={isSaving || disabled}
-        className="bg-black text-white px-5 py-2.5 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+        disabled={isDisabled}
+        onMouseEnter={() => setSaveHovered(true)}
+        onMouseLeave={() => setSaveHovered(false)}
+        style={{
+          fontFamily: "DM Sans, sans-serif",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "#E7ECEF",
+          background: isDisabled ? "rgba(39,76,119,0.25)" : saveHovered ? "#6096BA" : "#274C77",
+          border: "none",
+          borderRadius: "8px",
+          padding: "9px 20px",
+          cursor: isDisabled ? "not-allowed" : "pointer",
+          transition: "background 0.18s",
+        }}
       >
-        {isSaving ? "Saving..." : saveLabel}
+        {isSaving ? "Saving…" : saveLabel}
       </button>
       <button
         onClick={onCancel}
-        className="border px-5 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors"
+        onMouseEnter={() => setCancelHovered(true)}
+        onMouseLeave={() => setCancelHovered(false)}
+        style={{
+          fontFamily: "DM Sans, sans-serif",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "#274C77",
+          background: cancelHovered ? "rgba(163,206,241,0.20)" : "transparent",
+          border: "1px solid rgba(39,76,119,0.15)",
+          borderRadius: "8px",
+          padding: "9px 20px",
+          cursor: "pointer",
+          transition: "background 0.15s, border-color 0.15s",
+        }}
       >
         Cancel
       </button>
@@ -165,18 +359,71 @@ function ActionButtons({
   );
 }
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonPage() {
+  return (
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#E7ECEF" }}
+    >
+      <Header />
+
+      {/* Skeleton hero */}
+      <div style={{ backgroundColor: "#A3CEF1", borderBottom: "1px solid rgba(39,76,119,0.13)", padding: "52px 56px 48px" }}>
+        <div className="animate-pulse" style={{ maxWidth: "760px", margin: "0 auto" }}>
+          <div style={{ height: "12px", width: "80px", background: "rgba(39,76,119,0.15)", borderRadius: "6px", marginBottom: "20px" }} />
+          <div style={{ height: "40px", width: "280px", background: "rgba(39,76,119,0.15)", borderRadius: "8px", marginBottom: "14px" }} />
+          <div style={{ height: "16px", width: "360px", background: "rgba(39,76,119,0.10)", borderRadius: "6px" }} />
+        </div>
+      </div>
+
+      <main style={{ flex: 1, padding: "40px 56px" }}>
+        <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "28px" }}>
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="animate-pulse"
+              style={{
+                background: "#FFFFFF",
+                border: "1px solid rgba(39,76,119,0.09)",
+                borderRadius: "18px",
+                overflow: "hidden",
+              }}
+            >
+              {[1, 2].map((j) => (
+                <div key={j}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "18px 24px" }}>
+                    <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(39,76,119,0.07)", flexShrink: 0 }} />
+                    <div>
+                      <div style={{ height: "10px", width: "60px", background: "rgba(39,76,119,0.07)", borderRadius: "4px", marginBottom: "8px" }} />
+                      <div style={{ height: "14px", width: "140px", background: "rgba(39,76,119,0.07)", borderRadius: "4px" }} />
+                    </div>
+                  </div>
+                  {j < 2 && <div style={{ height: "1px", background: "rgba(39,76,119,0.07)" }} />}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
+  // ── All state — preserved exactly ─────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Server state
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
 
-  // Account section state
   const [openSection, setOpenSection] = useState<AccountSection | null>(null);
   const [newNickname, setNewNickname] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -184,11 +431,12 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Preferences (optimistic)
   const [notifications, setNotifications] = useState(true);
   const [privacy, setPrivacy] = useState(true);
   const [theme, setTheme] = useState("light");
   const [language, setLanguage] = useState("en");
+
+  // ── All handlers — preserved exactly ──────────────────────────────────────
 
   useEffect(() => {
     async function load() {
@@ -236,16 +484,8 @@ export function SettingsPage() {
       if (newPassword.length < 6) { setError("New password must be at least 6 characters"); return; }
       if (newPassword !== confirmPassword) { setError("Passwords do not match"); return; }
     }
-
-    if (section === "nickname" && !newNickname.trim()) {
-      setError("Nickname cannot be empty");
-      return;
-    }
-
-    if (section === "email" && !newEmail.trim()) {
-      setError("Email cannot be empty");
-      return;
-    }
+    if (section === "nickname" && !newNickname.trim()) { setError("Nickname cannot be empty"); return; }
+    if (section === "email" && !newEmail.trim()) { setError("Email cannot be empty"); return; }
 
     const payload =
       section === "nickname"
@@ -257,10 +497,7 @@ export function SettingsPage() {
     try {
       setIsSaving(true);
       const updated = await updateAccountSettings(payload);
-      // If email changed, backend issues a new token — save it
-      if (updated.token) {
-        saveToken(updated.token);
-      }
+      if (updated.token) saveToken(updated.token);
       setSettings((prev) => prev ? { ...prev, ...updated } : updated);
       setOpenSection(null);
       setSuccess(
@@ -280,7 +517,6 @@ export function SettingsPage() {
   async function handlePreferenceChange(patch: Partial<SettingsResponse>) {
     clearMessages();
     const previousSettings = settings;
-    // Optimistic update
     setSettings((prev) => prev ? { ...prev, ...patch } : null);
     if (patch.notificationsEnabled !== undefined) setNotifications(patch.notificationsEnabled);
     if (patch.privacyModeEnabled !== undefined) setPrivacy(patch.privacyModeEnabled);
@@ -296,7 +532,6 @@ export function SettingsPage() {
       setTimeout(() => setSuccess(""), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save preferences");
-      // Revert on error
       if (previousSettings) {
         setNotifications(previousSettings.notificationsEnabled);
         setPrivacy(previousSettings.privacyModeEnabled);
@@ -308,76 +543,173 @@ export function SettingsPage() {
     }
   }
 
-  // ── Skeleton ──────────────────────────────────────────────────────────────
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <main className="flex-1">
-          <div className="max-w-2xl mx-auto px-8 py-12 space-y-8">
-            <div className="h-10 w-48 bg-gray-100 rounded-lg animate-pulse" />
-            <div className="h-5 w-72 bg-gray-100 rounded animate-pulse" />
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse" />
-            ))}
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (isLoading) return <SkeletonPage />;
 
   // ── Page ──────────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#E7ECEF", fontFamily: "DM Sans, sans-serif", color: "#274C77" }}
+    >
       <Header />
 
-      <main className="flex-1">
-        <div className="max-w-2xl mx-auto px-8 py-12">
-
-          {/* Header */}
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-2">
-              <Settings className="w-6 h-6" />
-              <h1 className="text-3xl font-bold">Account Settings</h1>
+      {/* ── Hero strip ────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: "#A3CEF1",
+          borderBottom: "1px solid rgba(39,76,119,0.13)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            opacity: 0.12,
+            backgroundImage: "radial-gradient(#274C77 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            maxWidth: "920px",
+            margin: "0 auto",
+            padding: "44px 56px 40px",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "rgba(39,76,119,0.55)",
+              marginBottom: "14px",
+            }}
+          >
+            Your account
+          </p>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                background: "rgba(39,76,119,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                marginTop: "4px",
+              }}
+            >
+              <Settings className="w-5 h-5" style={{ color: "#274C77" }} />
             </div>
-            <p className="text-gray-500 text-sm">
-              Manage your account details, security, and preferences.
-            </p>
+            <div>
+              <h1
+                style={{
+                  fontFamily: "DM Sans, sans-serif",
+                  fontSize: "clamp(28px, 3.5vw, 44px)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.04em",
+                  lineHeight: 1.05,
+                  color: "#274C77",
+                  margin: "0 0 10px",
+                }}
+              >
+                Account Settings
+              </h1>
+              <p
+                style={{
+                  fontFamily: "DM Sans, sans-serif",
+                  fontSize: "15px",
+                  lineHeight: 1.70,
+                  letterSpacing: "-0.01em",
+                  color: "rgba(39,76,119,0.62)",
+                  margin: 0,
+                }}
+              >
+                Manage your account details, security, and preferences.
+              </p>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Banners */}
+      <main style={{ flex: 1 }}>
+        <div
+          style={{
+            maxWidth: "920px",
+            margin: "0 auto",
+            padding: "36px 56px 72px",
+          }}
+        >
+
+          {/* ── Banners ─────────────────────────────────────────────────── */}
           {success && (
-            <div className="mb-6 flex items-center gap-2 border border-green-200 bg-green-50 rounded-xl px-5 py-3.5 text-green-700 text-sm">
-              <Check className="w-4 h-4 shrink-0" />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                background: "rgba(163,206,241,0.22)",
+                border: "1px solid rgba(96,150,186,0.30)",
+                borderRadius: "12px",
+                padding: "13px 18px",
+                marginBottom: "24px",
+                fontFamily: "DM Sans, sans-serif",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#274C77",
+              }}
+            >
+              <Check className="w-4 h-4 shrink-0" style={{ color: "#274C77" }} />
               {success}
             </div>
           )}
           {error && (
-            <div className="mb-6 flex items-center gap-2 border border-red-200 bg-red-50 rounded-xl px-5 py-3.5 text-red-700 text-sm">
-              <X className="w-4 h-4 shrink-0" />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                background: "rgba(192,57,43,0.06)",
+                border: "1px solid rgba(192,57,43,0.22)",
+                borderRadius: "12px",
+                padding: "13px 18px",
+                marginBottom: "24px",
+                fontFamily: "DM Sans, sans-serif",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "rgba(192,57,43,0.90)",
+              }}
+            >
+              <X className="w-4 h-4 shrink-0" style={{ color: "rgba(192,57,43,0.85)" }} />
               {error}
             </div>
           )}
 
-          <div className="space-y-8">
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
 
-            {/* ── Section: Account ── */}
+            {/* ── Account ─────────────────────────────────────────────────── */}
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 px-1">
-                Account
-              </h2>
+              <SectionLabel>Account</SectionLabel>
               <SettingsCard>
                 {/* Nickname */}
                 <div>
                   <SettingsRow
-                    icon={<User className="w-4 h-4 text-gray-600" />}
+                    icon={<User className="w-4 h-4" style={{ color: "#274C77" }} />}
                     label="Nickname"
                     value={settings?.nickname ?? ""}
                     onClick={() => toggleSection("nickname")}
                     open={openSection === "nickname"}
+                    tint="ice"
                   />
                   {openSection === "nickname" && (
                     <SettingsExpandPanel>
@@ -397,14 +729,17 @@ export function SettingsPage() {
                   )}
                 </div>
 
+                <CardDivider />
+
                 {/* Email */}
                 <div>
                   <SettingsRow
-                    icon={<Mail className="w-4 h-4 text-gray-600" />}
+                    icon={<Mail className="w-4 h-4" style={{ color: "#274C77" }} />}
                     label="Email address"
                     value={settings?.email ?? ""}
                     onClick={() => toggleSection("email")}
                     open={openSection === "email"}
+                    tint="calm"
                   />
                   {openSection === "email" && (
                     <SettingsExpandPanel>
@@ -425,14 +760,17 @@ export function SettingsPage() {
                   )}
                 </div>
 
+                <CardDivider />
+
                 {/* Password */}
                 <div>
                   <SettingsRow
-                    icon={<Lock className="w-4 h-4 text-gray-600" />}
+                    icon={<Lock className="w-4 h-4" style={{ color: "#274C77" }} />}
                     label="Password"
                     value="••••••••••"
                     onClick={() => toggleSection("password")}
                     open={openSection === "password"}
+                    tint="muted"
                   />
                   {openSection === "password" && (
                     <SettingsExpandPanel>
@@ -457,7 +795,14 @@ export function SettingsPage() {
                         onChange={setConfirmPassword}
                         autoComplete="new-password"
                       />
-                      <p className="text-xs text-gray-400">
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "12px",
+                          color: "rgba(39,76,119,0.42)",
+                          margin: 0,
+                        }}
+                      >
                         Minimum 6 characters.
                       </p>
                       <ActionButtons
@@ -473,21 +818,43 @@ export function SettingsPage() {
               </SettingsCard>
             </div>
 
-            {/* ── Section: Notifications & Privacy ── */}
+            {/* ── Notifications & Privacy ────────────────────────────────── */}
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 px-1">
-                Notifications & Privacy
-              </h2>
+              <SectionLabel>Notifications &amp; Privacy</SectionLabel>
               <SettingsCard>
                 {/* Notifications toggle */}
-                <div className="flex items-center justify-between px-6 py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                      <Bell className="w-4 h-4 text-gray-600" />
-                    </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "18px 24px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <IconBox tint="ice">
+                      <Bell className="w-4 h-4" style={{ color: "#274C77" }} />
+                    </IconBox>
                     <div>
-                      <p className="font-medium text-sm">Notifications</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#274C77",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Notifications
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "12px",
+                          color: "rgba(39,76,119,0.50)",
+                          margin: 0,
+                        }}
+                      >
                         Receive updates about your reports and forum activity
                       </p>
                     </div>
@@ -498,15 +865,41 @@ export function SettingsPage() {
                   />
                 </div>
 
+                <CardDivider />
+
                 {/* Privacy toggle */}
-                <div className="flex items-center justify-between px-6 py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-4 h-4 text-gray-600" />
-                    </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "18px 24px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <IconBox tint="calm">
+                      <ShieldCheck className="w-4 h-4" style={{ color: "#274C77" }} />
+                    </IconBox>
                     <div>
-                      <p className="font-medium text-sm">Privacy mode</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#274C77",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Privacy mode
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "12px",
+                          color: "rgba(39,76,119,0.50)",
+                          margin: 0,
+                        }}
+                      >
                         Hide your profile details from other users
                       </p>
                     </div>
@@ -519,67 +912,88 @@ export function SettingsPage() {
               </SettingsCard>
             </div>
 
-            {/* ── Section: Appearance ── */}
+            {/* ── Appearance & Language ──────────────────────────────────── */}
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 px-1">
-                Appearance & Language
-              </h2>
+              <SectionLabel>Appearance &amp; Language</SectionLabel>
               <SettingsCard>
                 {/* Theme */}
-                <div className="px-6 py-5">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                      <Monitor className="w-4 h-4 text-gray-600" />
-                    </div>
+                <div style={{ padding: "20px 24px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+                    <IconBox tint="ice">
+                      <Monitor className="w-4 h-4" style={{ color: "#274C77" }} />
+                    </IconBox>
                     <div>
-                      <p className="font-medium text-sm">Theme</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#274C77",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Theme
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "12px",
+                          color: "rgba(39,76,119,0.50)",
+                          margin: 0,
+                        }}
+                      >
                         Choose your preferred interface style
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-3">
+                  <div style={{ display: "flex", gap: "10px" }}>
                     {(["light", "dark", "system"] as const).map((t) => (
-                      <button
+                      <ThemeButton
                         key={t}
+                        label={t}
+                        active={theme === t}
                         onClick={() => handlePreferenceChange({ themePreference: t })}
-                        className={`flex-1 py-2.5 rounded-lg border text-sm font-medium capitalize transition-all ${
-                          theme === t
-                            ? "border-black bg-black text-white"
-                            : "border-gray-200 hover:border-gray-400"
-                        }`}
-                      >
-                        {t}
-                      </button>
+                      />
                     ))}
                   </div>
                 </div>
 
+                <CardDivider />
+
                 {/* Language */}
-                <div className="px-6 py-5">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                      <Globe className="w-4 h-4 text-gray-600" />
-                    </div>
+                <div style={{ padding: "20px 24px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+                    <IconBox tint="calm">
+                      <Globe className="w-4 h-4" style={{ color: "#274C77" }} />
+                    </IconBox>
                     <div>
-                      <p className="font-medium text-sm">Language</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#274C77",
+                          margin: "0 0 3px",
+                        }}
+                      >
+                        Language
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: "DM Sans, sans-serif",
+                          fontSize: "12px",
+                          color: "rgba(39,76,119,0.50)",
+                          margin: 0,
+                        }}
+                      >
                         Select the language for your interface
                       </p>
                     </div>
                   </div>
-                  <select
+                  <LanguageSelect
                     value={language}
-                    onChange={(e) => handlePreferenceChange({ languagePreference: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
-                  >
-                    <option value="en">English</option>
-                    <option value="ru">Русский</option>
-                    <option value="kk">Қазақша</option>
-                    <option value="de">Deutsch</option>
-                    <option value="fr">Français</option>
-                    <option value="es">Español</option>
-                  </select>
+                    onChange={(v) => handlePreferenceChange({ languagePreference: v })}
+                  />
                 </div>
               </SettingsCard>
             </div>
@@ -590,5 +1004,91 @@ export function SettingsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+// ─── Theme button with hover state ────────────────────────────────────────────
+
+function ThemeButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: 1,
+        fontFamily: "DM Sans, sans-serif",
+        fontSize: "13px",
+        fontWeight: 600,
+        textTransform: "capitalize",
+        padding: "10px 0",
+        borderRadius: "10px",
+        border: `1px solid ${active ? "transparent" : hovered ? "rgba(39,76,119,0.25)" : "rgba(39,76,119,0.12)"}`,
+        cursor: "pointer",
+        transition: "all 0.15s",
+        backgroundColor: active ? "#274C77" : hovered ? "rgba(163,206,241,0.20)" : "transparent",
+        color: active ? "#E7ECEF" : "#274C77",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─── Language select with focus ring ─────────────────────────────────────────
+
+function LanguageSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        width: "100%",
+        padding: "10px 14px",
+        fontFamily: "DM Sans, sans-serif",
+        fontSize: "14px",
+        color: "#274C77",
+        background: "#F8FBFD",
+        border: `1px solid ${focused ? "rgba(96,150,186,0.65)" : "rgba(39,76,119,0.15)"}`,
+        borderRadius: "10px",
+        outline: "none",
+        boxShadow: focused ? "0 0 0 3px rgba(96,150,186,0.12)" : "none",
+        transition: "border-color 0.15s, box-shadow 0.15s",
+        cursor: "pointer",
+        appearance: "none",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23274C77' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "right 14px center",
+        paddingRight: "36px",
+        boxSizing: "border-box",
+      }}
+    >
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+      <option value="kk">Қазақша</option>
+      <option value="de">Deutsch</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+    </select>
   );
 }

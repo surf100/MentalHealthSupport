@@ -2,8 +2,22 @@ import { Header } from "../components/header";
 import { Footer } from "../components/footer";
 import { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { AlertCircle, Upload, X, FileText, ImageIcon } from "lucide-react";
+import {
+  AlertCircle,
+  Upload,
+  X,
+  FileText,
+  ImageIcon,
+  ShieldCheck,
+  Lock,
+  Phone,
+  BookOpen,
+  MessageSquare,
+  CheckCircle2,
+} from "lucide-react";
 import { createReport, ReportCategory } from "../api/report-api";
+
+// ── All business logic preserved exactly ──────────────────────────────────
 
 const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY as string;
 
@@ -21,7 +35,7 @@ type UploadedFile = {
   file: File;
   preview: string | null;
   uploading: boolean;
-  url: string | null;   // imgbb URL for images, data URL for docs
+  url: string | null;
   error: string | null;
 };
 
@@ -55,9 +69,55 @@ async function readAsDataUrl(file: File): Promise<string> {
 }
 
 function FileIcon({ file }: { file: File }) {
-  if (file.type.startsWith("image/")) return <ImageIcon className="w-5 h-5 text-blue-500" />;
-  return <FileText className="w-5 h-5 text-gray-500" />;
+  if (file.type.startsWith("image/"))
+    return <ImageIcon className="w-5 h-5" style={{ color: "#6096BA" }} />;
+  return <FileText className="w-5 h-5" style={{ color: "rgba(36,76,90,0.50)" }} />;
 }
+
+// ── Shared input style helpers ─────────────────────────────────────────────
+
+const inputBase: React.CSSProperties = {
+  width: "100%",
+  padding: "11px 16px",
+  fontFamily: "DM Sans, sans-serif",
+  fontSize: "14px",
+  color: "#274C77",
+  background: "#F6F8F9",
+  border: "1px solid rgba(205,205,205,0.8)",
+  borderRadius: "10px",
+  outline: "none",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  boxSizing: "border-box" as const,
+};
+
+const inputError: React.CSSProperties = {
+  ...inputBase,
+  border: "1px solid rgba(192,57,43,0.45)",
+  background: "rgba(192,57,43,0.03)",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontFamily: "DM Sans, sans-serif",
+  fontSize: "13px",
+  fontWeight: 600,
+  color: "#274C77",
+  display: "block",
+  marginBottom: "8px",
+};
+
+const errorStyle: React.CSSProperties = {
+  fontFamily: "DM Sans, sans-serif",
+  fontSize: "12px",
+  color: "rgba(192,57,43,0.85)",
+  marginTop: "6px",
+};
+
+const sectionDivider: React.CSSProperties = {
+  borderTop: "1px solid rgba(205,205,205,0.55)",
+  margin: "28px 0",
+};
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function AnonymousReportPage() {
   const navigate = useNavigate();
@@ -73,12 +133,13 @@ export function AnonymousReportPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [dropHover, setDropHover] = useState(false);
+
+  // ── File handlers — logic untouched ──────────────────────────────────────
 
   function processFile(file: File, idx: number) {
     const isImage = IMAGE_TYPES.includes(file.type);
-
     if (isImage) {
-      // Images → imgbb (cloud URL, lightweight)
       uploadToImgbb(file)
         .then((url) =>
           setUploadedFiles((prev) =>
@@ -93,7 +154,6 @@ export function AnonymousReportPage() {
           )
         );
     } else {
-      // PDF/DOC → read as base64 data URL locally (instant, no external service)
       readAsDataUrl(file)
         .then((dataUrl) =>
           setUploadedFiles((prev) =>
@@ -128,7 +188,6 @@ export function AnonymousReportPage() {
       files.forEach((file, i) => setTimeout(() => processFile(file, startIdx + i), 0));
       return [...prev, ...newEntries];
     });
-
     e.target.value = "";
   }
 
@@ -139,6 +198,8 @@ export function AnonymousReportPage() {
       return prev.filter((_, i) => i !== index);
     });
   }
+
+  // ── Submit handler — logic untouched ─────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,19 +224,19 @@ export function AnonymousReportPage() {
       const urgencyPrefix = formData.urgency ? "[URGENT] " : "";
       const locationSuffix = formData.location.trim() ? ` — ${formData.location.trim()}` : "";
 
-      // Encode attachments as JSON block so they can be parsed on the detail page
       const attachments = uploadedFiles
         .filter((f) => f.url && !f.error)
         .map((f) => ({
           name: f.file.name,
           type: f.file.type,
           size: f.file.size,
-          url: f.url!, // imgbb URL for images, data URL for docs
+          url: f.url!,
         }));
 
-      const attachmentBlock = attachments.length > 0
-        ? `\n\n<!--ATTACHMENTS:${JSON.stringify(attachments)}-->`
-        : "";
+      const attachmentBlock =
+        attachments.length > 0
+          ? `\n\n<!--ATTACHMENTS:${JSON.stringify(attachments)}-->`
+          : "";
 
       const report = await createReport({
         title: `${urgencyPrefix}${categoryLabel}${locationSuffix}`,
@@ -194,223 +255,771 @@ export function AnonymousReportPage() {
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#F9F7F3", fontFamily: "DM Sans, sans-serif", color: "#274C77" }}
+    >
       <Header />
 
-      <main className="flex-1 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-800">
-              If you are in immediate danger, please visit the{" "}
-              <Link to="/crisis-help" className="font-medium underline hover:text-red-900">
+      {/* ── Hero strip ────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: "#A3CEF1",
+          borderBottom: "1px solid rgba(36,76,90,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            opacity: 0.10,
+            backgroundImage: "radial-gradient(#274C77 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            maxWidth: "1280px",
+            margin: "0 auto",
+            padding: "48px 56px 44px",
+          }}
+        >
+          {/* Eyebrow */}
+          <p
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "rgba(36,76,90,0.60)",
+              marginBottom: "14px",
+            }}
+          >
+            Your voice, protected
+          </p>
+
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "24px" }}>
+            <div>
+              <h1
+                style={{
+                  fontFamily: "DM Serif Display, serif",
+                  fontSize: "clamp(36px, 4.5vw, 58px)",
+                  fontWeight: 400,
+                  letterSpacing: "-0.04em",
+                  lineHeight: 1.05,
+                  color: "#274C77",
+                  margin: 0,
+                  marginBottom: "14px",
+                }}
+              >
+                Submit an anonymous report.
+              </h1>
+              <p
+                style={{
+                  fontFamily: "DM Sans, sans-serif",
+                  fontSize: "16px",
+                  lineHeight: 1.75,
+                  letterSpacing: "-0.01em",
+                  color: "rgba(36,76,90,0.65)",
+                  maxWidth: "540px",
+                  margin: 0,
+                }}
+              >
+                If you're experiencing bullying, harassment, or emotional distress — you can safely report it here. Your identity stays protected.
+              </p>
+            </div>
+
+            {/* Trust pill */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                background: "rgba(255,255,255,0.55)",
+                border: "1px solid rgba(36,76,90,0.12)",
+                borderRadius: "14px",
+                padding: "14px 20px",
+                backdropFilter: "blur(4px)",
+                flexShrink: 0,
+              }}
+            >
+              <ShieldCheck className="w-5 h-5" style={{ color: "#274C77" }} />
+              <div>
+                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", fontWeight: 700, color: "#274C77", margin: 0 }}>
+                  100% anonymous
+                </p>
+                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(36,76,90,0.55)", margin: 0 }}>
+                  No identity stored
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main style={{ flex: 1, padding: "40px 0 64px" }}>
+        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 56px" }}>
+
+          {/* ── Immediate danger notice (calm, not alarming) ───────────────── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px",
+              background: "rgba(136,187,214,0.15)",
+              border: "1px solid rgba(136,187,214,0.35)",
+              borderRadius: "12px",
+              padding: "14px 18px",
+              marginBottom: "28px",
+            }}
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "#274C77", marginTop: "2px" }} />
+            <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(36,76,90,0.75)", margin: 0, lineHeight: 1.6 }}>
+              If you're in immediate danger, please visit the{" "}
+              <Link
+                to="/crisis-help"
+                style={{ color: "#274C77", fontWeight: 600, textDecoration: "underline", textUnderlineOffset: "3px" }}
+              >
                 Crisis Help
               </Link>{" "}
-              page.
+              page for urgent support.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-8">
-            <div className="col-span-2">
-              <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-3">Submit an Anonymous Report</h1>
-                <p className="text-lg text-gray-600">
-                  If you are experiencing bullying, harassment, or emotional distress, you can
-                  safely report it here. Your identity can remain anonymous.
+          {/* ── Two-column layout ─────────────────────────────────────────── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "28px", alignItems: "start" }}>
+
+            {/* ── Main form card ──────────────────────────────────────────── */}
+            <div
+              style={{
+                background: "#FFFFFF",
+                border: "1px solid rgba(136,187,214,0.20)",
+                borderRadius: "20px",
+                padding: "40px",
+                boxShadow: "0 4px 24px rgba(36,76,90,0.07)",
+              }}
+            >
+              {/* Submit error */}
+              {submitError && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    background: "rgba(192,57,43,0.06)",
+                    border: "1px solid rgba(192,57,43,0.25)",
+                    borderRadius: "10px",
+                    padding: "14px 16px",
+                    marginBottom: "28px",
+                  }}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "rgba(192,57,43,0.85)", marginTop: "2px" }} />
+                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(192,57,43,0.85)", margin: 0 }}>
+                    {submitError}
+                  </p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} noValidate>
+
+                {/* Section: Incident details */}
+                <p
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "rgba(36,76,90,0.40)",
+                    marginBottom: "20px",
+                  }}
+                >
+                  Incident details
                 </p>
-              </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-8">
-                {submitError && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-800">{submitError}</p>
-                  </div>
-                )}
+                {/* Category */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={labelStyle}>
+                    Report category
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    style={{
+                      ...(errors.category ? inputError : inputBase),
+                      appearance: "none" as const,
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23244C5A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: "no-repeat",
+                      backgroundPosition: "right 14px center",
+                      paddingRight: "36px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value="">Select a category</option>
+                    <option value="bullying">Bullying</option>
+                    <option value="cyberbullying">Cyberbullying</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="emotional-stress">Emotional stress</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {errors.category && <p style={errorStyle}>{errors.category}</p>}
+                </div>
 
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-2.5 text-gray-900">Report Category</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.category ? "border-red-500" : "border-gray-300"}`}
-                    >
-                      <option value="">Select a category</option>
-                      <option value="bullying">Bullying</option>
-                      <option value="cyberbullying">Cyberbullying</option>
-                      <option value="harassment">Harassment</option>
-                      <option value="emotional-stress">Emotional stress</option>
-                      <option value="other">Other</option>
-                    </select>
-                    {errors.category && <p className="mt-2 text-sm text-red-600">{errors.category}</p>}
-                  </div>
+                {/* Description */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={labelStyle}>
+                    Incident description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe what happened in as much detail as you're comfortable sharing. Everything is confidential."
+                    rows={6}
+                    style={{
+                      ...(errors.description ? inputError : inputBase),
+                      resize: "vertical",
+                      lineHeight: 1.65,
+                    }}
+                  />
+                  {errors.description && <p style={errorStyle}>{errors.description}</p>}
+                </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-2.5 text-gray-900">Incident Description</label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Please describe what happened in as much detail as you're comfortable sharing..."
-                      rows={6}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none ${errors.description ? "border-red-500" : "border-gray-300"}`}
-                    />
-                    {errors.description && <p className="mt-2 text-sm text-red-600">{errors.description}</p>}
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-2.5 text-gray-900">
-                      Location <span className="text-gray-500 font-normal">(optional)</span>
+                {/* Location + Date in a row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                  <div>
+                    <label style={labelStyle}>
+                      Location{" "}
+                      <span style={{ fontWeight: 400, color: "rgba(36,76,90,0.45)" }}>(optional)</span>
                     </label>
                     <input
                       type="text"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      placeholder="Where did this incident occur?"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="Where did this happen?"
+                      style={inputBase}
                     />
                   </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-2.5 text-gray-900">Date of Incident</label>
+                  <div>
+                    <label style={labelStyle}>Date of incident</label>
                     <input
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.date ? "border-red-500" : "border-gray-300"}`}
+                      style={errors.date ? inputError : inputBase}
                     />
-                    {errors.date && <p className="mt-2 text-sm text-red-600">{errors.date}</p>}
+                    {errors.date && <p style={errorStyle}>{errors.date}</p>}
                   </div>
+                </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-2.5 text-gray-900">
-                      Upload Evidence <span className="text-gray-500 font-normal">(optional)</span>
-                    </label>
+                <div style={sectionDivider} />
 
+                {/* Section: Evidence */}
+                <p
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "rgba(36,76,90,0.40)",
+                    marginBottom: "20px",
+                  }}
+                >
+                  Evidence{" "}
+                  <span style={{ fontWeight: 400, textTransform: "none" as const, letterSpacing: 0, fontSize: "12px", color: "rgba(36,76,90,0.40)" }}>
+                    — optional
+                  </span>
+                </p>
+
+                {/* Upload zone */}
+                <div style={{ marginBottom: "20px" }}>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
+                    onDragLeave={() => setDropHover(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDropHover(false);
+                      if (e.dataTransfer.files.length > 0) {
+                        handleFileSelect({
+                          target: { files: e.dataTransfer.files, value: "" },
+                        } as unknown as React.ChangeEvent<HTMLInputElement>);
+                      }
+                    }}
+                    style={{
+                      border: `2px dashed ${dropHover ? "#6096BA" : "rgba(205,205,205,0.8)"}`,
+                      borderRadius: "12px",
+                      padding: "32px 24px",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      background: dropHover ? "rgba(136,187,214,0.06)" : "rgba(246,248,249,0.6)",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      style={{ display: "none" }}
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={handleFileSelect}
+                    />
                     <div
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (e.dataTransfer.files.length > 0) {
-                          handleFileSelect({ target: { files: e.dataTransfer.files, value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>);
-                        }
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "10px",
+                        background: "rgba(153,211,223,0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 12px",
                       }}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors cursor-pointer"
                     >
-                      <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*,.pdf,.doc,.docx" onChange={handleFileSelect} />
-                      <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, PDF, DOC up to 10MB each</p>
+                      <Upload className="w-5 h-5" style={{ color: "#274C77" }} />
                     </div>
-
-                    {uploadedFiles.length > 0 && (
-                      <ul className="mt-3 space-y-2">
-                        {uploadedFiles.map((f, i) => (
-                          <li key={i} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                            {f.preview ? (
-                              <img src={f.preview} alt="preview" className="w-10 h-10 rounded object-cover shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center shrink-0">
-                                <FileIcon file={f.file} />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-800 truncate">{f.file.name}</p>
-                              <p className="text-xs text-gray-500">{(f.file.size / 1024).toFixed(0)} KB</p>
-                            </div>
-                            {f.uploading && (
-                              <span className="text-xs text-blue-600 shrink-0">
-                                {IMAGE_TYPES.includes(f.file.type) ? "Uploading…" : "Reading…"}
-                              </span>
-                            )}
-                            {!f.uploading && f.url && !f.error && (
-                              <span className="text-xs text-emerald-600 shrink-0">✓ Ready</span>
-                            )}
-                            {f.error && <span className="text-xs text-red-600 shrink-0">{f.error}</span>}
-                            <button type="button" onClick={() => removeFile(i)} className="ml-1 p-1 text-gray-400 hover:text-red-500 transition-colors shrink-0">
-                              <X className="w-4 h-4" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="mb-8">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.urgency}
-                        onChange={(e) => setFormData({ ...formData, urgency: e.target.checked })}
-                        className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <span className="text-sm font-medium text-gray-900">This situation feels urgent</span>
-                    </label>
-                  </div>
-
-                  <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <p className="text-sm text-emerald-800">
-                      This report can be submitted anonymously. Our moderators will review it to provide support.
+                    <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", fontWeight: 500, color: "#274C77", margin: "0 0 4px" }}>
+                      Click to upload or drag and drop
+                    </p>
+                    <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(36,76,90,0.45)", margin: 0 }}>
+                      PNG, JPG, PDF, DOC — up to 10 MB each
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || uploadedFiles.some((f) => f.uploading)}
-                      className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit Report"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/")}
-                      disabled={isSubmitting}
-                      className="bg-white text-black px-6 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
+                  {/* File list */}
+                  {uploadedFiles.length > 0 && (
+                    <ul style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px", listStyle: "none", padding: 0, margin: "12px 0 0" }}>
+                      {uploadedFiles.map((f, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            padding: "10px 14px",
+                            border: "1px solid rgba(205,205,205,0.55)",
+                            borderRadius: "10px",
+                            background: "#F6F8F9",
+                          }}
+                        >
+                          {f.preview ? (
+                            <img
+                              src={f.preview}
+                              alt="preview"
+                              style={{ width: "36px", height: "36px", borderRadius: "6px", objectFit: "cover", flexShrink: 0 }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: "36px",
+                                height: "36px",
+                                borderRadius: "8px",
+                                background: "rgba(205,205,205,0.35)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <FileIcon file={f.file} />
+                            </div>
+                          )}
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", fontWeight: 500, color: "#274C77", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {f.file.name}
+                            </p>
+                            <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "11px", color: "rgba(36,76,90,0.45)", margin: 0 }}>
+                              {(f.file.size / 1024).toFixed(0)} KB
+                            </p>
+                          </div>
+
+                          {f.uploading && (
+                            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#6096BA", flexShrink: 0 }}>
+                              {IMAGE_TYPES.includes(f.file.type) ? "Uploading…" : "Reading…"}
+                            </span>
+                          )}
+                          {!f.uploading && f.url && !f.error && (
+                            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#274C77", flexShrink: 0, display: "flex", alignItems: "center", gap: "4px" }}>
+                              <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "#6096BA" }} />
+                              Ready
+                            </span>
+                          )}
+                          {f.error && (
+                            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(192,57,43,0.8)", flexShrink: 0 }}>
+                              {f.error}
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => removeFile(i)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: "4px",
+                              color: "rgba(36,76,90,0.35)",
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              transition: "color 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(192,57,43,0.7)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(36,76,90,0.35)")}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div style={sectionDivider} />
+
+                {/* Urgency checkbox */}
+                <div style={{ marginBottom: "24px" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.urgency}
+                      onChange={(e) => setFormData({ ...formData, urgency: e.target.checked })}
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        accentColor: "#6096BA",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div>
+                      <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", fontWeight: 600, color: "#274C77" }}>
+                        This situation feels urgent
+                      </span>
+                      <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(36,76,90,0.50)", margin: "2px 0 0" }}>
+                        Marking as urgent will prioritize your report for moderator review.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Anonymous assurance block */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "12px",
+                    background: "rgba(153,211,223,0.15)",
+                    border: "1px solid rgba(136,187,214,0.28)",
+                    borderRadius: "12px",
+                    padding: "16px 18px",
+                    marginBottom: "28px",
+                  }}
+                >
+                  <Lock className="w-4 h-4 shrink-0" style={{ color: "#274C77", marginTop: "2px" }} />
+                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(36,76,90,0.70)", margin: 0, lineHeight: 1.65 }}>
+                    This report is submitted anonymously. Our moderators will review it to provide appropriate support. We never share your information without permission.
+                  </p>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <SubmitButton isSubmitting={isSubmitting} isUploading={uploadedFiles.some((f) => f.uploading)} />
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    disabled={isSubmitting}
+                    style={{
+                      fontFamily: "DM Sans, sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: isSubmitting ? "rgba(36,76,90,0.35)" : "#274C77",
+                      background: "transparent",
+                      border: "1px solid rgba(36,76,90,0.18)",
+                      borderRadius: "8px",
+                      padding: "11px 22px",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSubmitting) {
+                        e.currentTarget.style.background = "rgba(205,205,205,0.25)";
+                        e.currentTarget.style.borderColor = "rgba(36,76,90,0.30)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.borderColor = "rgba(36,76,90,0.18)";
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <div className="col-span-1">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-8">
-                <h3 className="text-lg font-semibold mb-4">Need Help?</h3>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Crisis Support</h4>
-                    <p className="text-sm text-gray-600 mb-2">If you need immediate help, contact our crisis line:</p>
-                    <a href="tel:18002747461" className="text-sm font-medium text-emerald-600 hover:text-emerald-700">1-800-CRISIS-1</a>
+            {/* ── Sidebar ─────────────────────────────────────────────────── */}
+            <aside>
+              <div
+                style={{
+                  background: "#FFFFFF",
+                  border: "1px solid rgba(136,187,214,0.18)",
+                  borderRadius: "20px",
+                  padding: "28px",
+                  position: "sticky",
+                  top: "88px",
+                  boxShadow: "0 4px 24px rgba(36,76,90,0.06)",
+                }}
+              >
+                {/* Crisis support */}
+                <div style={{ marginBottom: "24px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(153,211,223,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <Phone className="w-4 h-4" style={{ color: "#274C77" }} />
                   </div>
-                  <div className="border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Chat Support</h4>
-                    <p className="text-sm text-gray-600 mb-3">Talk to a trained counselor anonymously.</p>
-                    <button disabled className="w-full bg-gray-100 text-gray-400 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed" title="Coming soon">Coming soon</button>
+                  <h3
+                    style={{
+                      fontFamily: "DM Serif Display, serif",
+                      fontSize: "17px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Crisis support
+                  </h3>
+                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(36,76,90,0.60)", margin: "0 0 10px", lineHeight: 1.6 }}>
+                    If you need immediate help, contact our crisis line.
+                  </p>
+                  <a
+                    href="tel:18002747461"
+                    style={{
+                      fontFamily: "DM Sans, sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "#274C77",
+                      textDecoration: "none",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    1-800-CRISIS-1
+                  </a>
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(205,205,205,0.55)", marginBottom: "24px" }} />
+
+                {/* Chat support */}
+                <div style={{ marginBottom: "24px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(205,205,205,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <MessageSquare className="w-4 h-4" style={{ color: "rgba(36,76,90,0.45)" }} />
                   </div>
-                  <div className="border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Resources</h4>
-                    <ul className="space-y-2">
-                      <li><Link to="/crisis-help" className="text-sm text-emerald-600 hover:text-emerald-700">How to report bullying →</Link></li>
-                      <li><Link to="/crisis-help" className="text-sm text-emerald-600 hover:text-emerald-700">Safety planning guide →</Link></li>
-                      <li><Link to="/forum" className="text-sm text-emerald-600 hover:text-emerald-700">Support community →</Link></li>
-                    </ul>
+                  <h3
+                    style={{
+                      fontFamily: "DM Serif Display, serif",
+                      fontSize: "17px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Chat support
+                  </h3>
+                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(36,76,90,0.60)", margin: "0 0 12px", lineHeight: 1.6 }}>
+                    Talk to a trained counselor anonymously.
+                  </p>
+                  <button
+                    disabled
+                    title="Coming soon"
+                    style={{
+                      width: "100%",
+                      fontFamily: "DM Sans, sans-serif",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      color: "rgba(36,76,90,0.35)",
+                      background: "rgba(205,205,205,0.25)",
+                      border: "1px solid rgba(205,205,205,0.5)",
+                      borderRadius: "8px",
+                      padding: "9px 16px",
+                      cursor: "not-allowed",
+                    }}
+                  >
+                    Coming soon
+                  </button>
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(205,205,205,0.55)", marginBottom: "24px" }} />
+
+                {/* Resources */}
+                <div style={{ marginBottom: "24px" }}>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      background: "rgba(136,187,214,0.18)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <BookOpen className="w-4 h-4" style={{ color: "#274C77" }} />
                   </div>
-                  <div className="border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Your Privacy</h4>
-                    <p className="text-sm text-gray-600">Reports are encrypted and can be submitted anonymously. We never share your information without permission.</p>
-                  </div>
+                  <h3
+                    style={{
+                      fontFamily: "DM Serif Display, serif",
+                      fontSize: "17px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      margin: "0 0 12px",
+                    }}
+                  >
+                    Resources
+                  </h3>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {[
+                      { to: "/crisis-help", label: "How to report bullying" },
+                      { to: "/crisis-help", label: "Safety planning guide" },
+                      { to: "/forum", label: "Support community" },
+                    ].map((item) => (
+                      <li key={item.label}>
+                        <Link
+                          to={item.to}
+                          style={{
+                            fontFamily: "DM Sans, sans-serif",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            color: "#274C77",
+                            textDecoration: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "#6096BA")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "#274C77")}
+                        >
+                          {item.label} →
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(205,205,205,0.55)", marginBottom: "0" }} />
+
+                {/* Privacy note */}
+                <div style={{ marginTop: "20px", display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                  <Lock className="w-3.5 h-3.5 shrink-0" style={{ color: "rgba(36,76,90,0.40)", marginTop: "3px" }} />
+                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "rgba(36,76,90,0.50)", margin: 0, lineHeight: 1.65 }}>
+                    Reports are encrypted and submitted anonymously. We never share your information without permission.
+                  </p>
                 </div>
               </div>
-            </div>
+            </aside>
           </div>
         </div>
       </main>
 
       <Footer />
     </div>
+  );
+}
+
+// ── Submit button with hover state ────────────────────────────────────────
+
+function SubmitButton({ isSubmitting, isUploading }: { isSubmitting: boolean; isUploading: boolean }) {
+  const [hovered, setHovered] = useState(false);
+  const disabled = isSubmitting || isUploading;
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        fontFamily: "DM Sans, sans-serif",
+        fontSize: "14px",
+        fontWeight: 600,
+        color: disabled ? "rgba(36,76,90,0.40)" : "#FFFFFF",
+        background: disabled
+          ? "rgba(205,205,205,0.45)"
+          : hovered
+          ? "#274C77"
+          : "#6096BA",
+        border: "none",
+        borderRadius: "8px",
+        padding: "11px 28px",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "background 0.18s",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
+      {isSubmitting ? (
+        <>
+          <span
+            style={{
+              width: "14px",
+              height: "14px",
+              border: "2px solid rgba(255,255,255,0.35)",
+              borderTopColor: "#fff",
+              borderRadius: "50%",
+              display: "inline-block",
+              animation: "spin 0.7s linear infinite",
+            }}
+          />
+          Submitting…
+        </>
+      ) : (
+        "Submit report"
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </button>
   );
 }

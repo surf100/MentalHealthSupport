@@ -6,6 +6,10 @@ import {
   MessageSquare,
   ShieldAlert,
   Trophy,
+  AlertCircle,
+  RefreshCw,
+  CheckCheck,
+  Loader2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -15,6 +19,8 @@ import {
   type BackendNotificationType,
   type NotificationResponse,
 } from "../api/notifications-api";
+
+// ─── types ────────────────────────────────────────────────────────────────────
 
 type NotificationFilter =
   | "All"
@@ -34,6 +40,8 @@ type NotificationItem = {
   createdAt: string;
 };
 
+// ─── constants ────────────────────────────────────────────────────────────────
+
 const filters: NotificationFilter[] = [
   "All",
   "Reports",
@@ -42,7 +50,6 @@ const filters: NotificationFilter[] = [
   "Safety",
 ];
 
-// Maps filter tab → backend NotificationType(s) to auto-mark as read
 const FILTER_TO_TYPES: Partial<
   Record<NotificationFilter, BackendNotificationType[]>
 > = {
@@ -52,44 +59,69 @@ const FILTER_TO_TYPES: Partial<
   Safety: ["WARNING", "SYSTEM"],
 };
 
+// filter → icon + colors
+const FILTER_META: Record<
+  NotificationFilter,
+  { icon: React.ReactNode; accentColor: string; bgColor: string }
+> = {
+  All: {
+    icon: <Bell className="w-4 h-4" />,
+    accentColor: "#6096BA",
+    bgColor: "rgba(136,187,214,0.10)",
+  },
+  Reports: {
+    icon: <FileText className="w-4 h-4" />,
+    accentColor: "#6096BA",
+    bgColor: "rgba(136,187,214,0.10)",
+  },
+  Forum: {
+    icon: <MessageSquare className="w-4 h-4" />,
+    accentColor: "#4a7fa5",
+    bgColor: "rgba(74,127,165,0.10)",
+  },
+  Achievements: {
+    icon: <Trophy className="w-4 h-4" />,
+    accentColor: "#e8a020",
+    bgColor: "rgba(232,160,32,0.12)",
+  },
+  Safety: {
+    icon: <ShieldAlert className="w-4 h-4" />,
+    accentColor: "#dc2626",
+    bgColor: "rgba(220,38,38,0.08)",
+  },
+};
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
 function mapBackendTypeToFilter(
   type: BackendNotificationType
 ): Exclude<NotificationFilter, "All"> {
   switch (type) {
-    case "REPORT_UPDATE":
-      return "Reports";
-    case "FORUM_REPLY":
-      return "Forum";
-    case "ACHIEVEMENT":
-      return "Achievements";
+    case "REPORT_UPDATE":  return "Reports";
+    case "FORUM_REPLY":    return "Forum";
+    case "ACHIEVEMENT":    return "Achievements";
     case "WARNING":
     case "SYSTEM":
-    default:
-      return "Safety";
+    default:               return "Safety";
   }
 }
 
 function formatRelativeTime(createdAt: string) {
   const date = new Date(createdAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Recently";
-  }
+  if (Number.isNaN(date.getTime())) return "Recently";
 
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffMinutes < 1) return "Just now";
-  if (diffMinutes < 60)
-    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24)
-    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
 
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -111,30 +143,30 @@ function mapNotification(item: NotificationResponse): NotificationItem {
   };
 }
 
-function getTypeIcon(type: BackendNotificationType) {
-  switch (type) {
-    case "REPORT_UPDATE":
-      return <FileText className="w-5 h-5 text-blue-600" />;
-    case "FORUM_REPLY":
-      return <MessageSquare className="w-5 h-5 text-emerald-600" />;
-    case "ACHIEVEMENT":
-      return <Trophy className="w-5 h-5 text-amber-600" />;
-    case "WARNING":
-      return <ShieldAlert className="w-5 h-5 text-red-600" />;
-    case "SYSTEM":
-    default:
-      return <Bell className="w-5 h-5 text-gray-600" />;
-  }
+// ─── skeleton ─────────────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded ${className ?? ""}`}
+      style={{ backgroundColor: "rgba(36,76,90,0.07)" }}
+    />
+  );
 }
 
+// ─── component ────────────────────────────────────────────────────────────────
+
 export function NotificationsPage() {
-  const [selectedFilter, setSelectedFilter] =
-    useState<NotificationFilter>("All");
+  const [selectedFilter, setSelectedFilter] = useState<NotificationFilter>("All");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // hover states
+  const [hoveredFilter, setHoveredFilter] = useState<string | null>(null);
+  const [hoveredMarkAll, setHoveredMarkAll] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -143,30 +175,19 @@ export function NotificationsPage() {
       try {
         setIsLoading(true);
         setError(null);
-
         const data = await getNotifications();
-
         if (!isMounted) return;
-
         setNotifications(data.map(mapNotification));
       } catch (err) {
         if (!isMounted) return;
-
-        const message =
-          err instanceof Error ? err.message : "Failed to load notifications";
-        setError(message);
+        setError(err instanceof Error ? err.message : "Failed to load notifications");
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
 
     loadNotifications();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   // Auto-mark as read when switching to a specific filter tab
@@ -176,24 +197,13 @@ export function NotificationsPage() {
     const types = FILTER_TO_TYPES[selectedFilter];
     if (!types) return;
 
-    // Check if there are actually unread notifications of these types
-    const hasUnread = notifications.some(
-      (n) => !n.isRead && types.includes(n.type)
-    );
+    const hasUnread = notifications.some((n) => !n.isRead && types.includes(n.type));
     if (!hasUnread) return;
 
-    // Mark on backend (fire and forget — update local state optimistically)
-    Promise.all(types.map((type) => markNotificationsAsReadByType(type))).catch(
-      () => {
-        // Silently ignore — worst case the badge count is slightly off
-      }
-    );
+    Promise.all(types.map((type) => markNotificationsAsReadByType(type))).catch(() => {});
 
-    // Optimistically update local state
     setNotifications((prev) =>
-      prev.map((n) =>
-        types.includes(n.type) ? { ...n, isRead: true } : n
-      )
+      prev.map((n) => (types.includes(n.type) ? { ...n, isRead: true } : n))
     );
   }, [selectedFilter, isLoading]);
 
@@ -201,19 +211,10 @@ export function NotificationsPage() {
     try {
       setIsMarkingAllAsRead(true);
       setActionError(null);
-
       await markAllNotificationsAsRead();
-
-      setNotifications((prev) =>
-        prev.map((item) => ({ ...item, isRead: true }))
-      );
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to mark notifications as read";
-
-      setActionError(message);
+      setActionError(err instanceof Error ? err.message : "Failed to mark notifications as read");
     } finally {
       setIsMarkingAllAsRead(false);
     }
@@ -226,66 +227,164 @@ export function NotificationsPage() {
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
 
+  // ─────────────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F6F8F9" }}>
       <Header />
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10 flex items-end justify-between gap-6">
-            <div>
-              <h1 className="text-5xl font-bold mb-3">Notifications</h1>
-              <p className="text-lg text-gray-600 max-w-3xl">
-                Stay updated on report activity, forum replies, safety alerts,
-                and community achievements.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-2">
-              <button
-                onClick={handleMarkAllAsRead}
-                disabled={isMarkingAllAsRead || unreadCount === 0}
-                className={`border px-5 py-3 rounded-md inline-flex items-center gap-2 text-sm ${
-                  isMarkingAllAsRead || unreadCount === 0
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "hover:bg-gray-50 text-gray-700"
-                }`}
-              >
-                {isMarkingAllAsRead ? "Marking..." : "Mark all as read"}
-              </button>
-              {actionError && (
-                <p className="text-sm text-red-600">{actionError}</p>
-              )}
-            </div>
+      {/* ── hero strip ── */}
+      <div className="relative overflow-hidden" style={{ backgroundColor: "#F9F7F3" }}>
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#6096BA 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-8 py-10 flex items-end justify-between gap-6">
+          <div>
+            <p
+              className="font-sans font-bold uppercase tracking-[0.20em] mb-2"
+              style={{ fontSize: 11, color: "#6096BA" }}
+            >
+              Updates
+            </p>
+            <h1
+              className="font-serif"
+              style={{
+                fontSize: 38,
+                letterSpacing: "-0.04em",
+                color: "#274C77",
+                lineHeight: 1.15,
+                fontFamily: "DM Serif Display, serif",
+              }}
+            >
+              Notifications
+            </h1>
+            <p
+              className="font-sans mt-2"
+              style={{
+                fontSize: 15,
+                color: "rgba(36,76,90,0.65)",
+                letterSpacing: "-0.01em",
+                lineHeight: 1.75,
+              }}
+            >
+              Stay updated on report activity, forum replies, safety alerts, and achievements.
+            </p>
           </div>
 
-          <div className="grid grid-cols-12 gap-8">
-            <aside className="col-span-3">
-              <div className="border rounded-xl p-6 sticky top-8">
-                <h2 className="font-semibold mb-4">Filter</h2>
+          {/* mark all as read button */}
+          <div className="flex flex-col items-end gap-2 pb-1">
+            <button
+              onClick={handleMarkAllAsRead}
+              disabled={isMarkingAllAsRead || unreadCount === 0}
+              onMouseEnter={() => setHoveredMarkAll(true)}
+              onMouseLeave={() => setHoveredMarkAll(false)}
+              className="inline-flex items-center gap-2 font-sans font-semibold rounded-sm px-4 py-2.5"
+              style={{
+                fontSize: 13,
+                color: unreadCount === 0 ? "rgba(36,76,90,0.35)" : "#274C77",
+                border: "1px solid rgba(36,76,90,0.20)",
+                backgroundColor:
+                  unreadCount === 0
+                    ? "transparent"
+                    : hoveredMarkAll
+                    ? "rgba(255,255,255,0.60)"
+                    : "rgba(255,255,255,0.40)",
+                cursor: isMarkingAllAsRead || unreadCount === 0 ? "not-allowed" : "pointer",
+                backdropFilter: "blur(4px)",
+                transition: "background 0.15s",
+              }}
+            >
+              {isMarkingAllAsRead ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCheck className="w-3.5 h-3.5" />
+              )}
+              {isMarkingAllAsRead ? "Marking…" : "Mark all as read"}
+            </button>
+            {actionError && (
+              <p className="font-sans" style={{ fontSize: 12, color: "#dc2626" }}>
+                {actionError}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
-                <div className="space-y-2">
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-8 py-10">
+          <div className="grid grid-cols-12 gap-8">
+
+            {/* ── sidebar ── */}
+            <aside className="col-span-3">
+              <div
+                className="rounded-2xl p-6 sticky top-8"
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid rgba(136,187,214,0.10)",
+                  boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                }}
+              >
+                <p
+                  className="font-sans font-bold uppercase tracking-[0.20em] mb-4"
+                  style={{ fontSize: 11, color: "#6096BA" }}
+                >
+                  Filter
+                </p>
+
+                <div className="space-y-1">
                   {filters.map((filter) => {
+                    const isActive = selectedFilter === filter;
                     const types = FILTER_TO_TYPES[filter];
                     const unreadInFilter = types
-                      ? notifications.filter(
-                          (n) => !n.isRead && types.includes(n.type)
-                        ).length
-                      : 0;
+                      ? notifications.filter((n) => !n.isRead && types.includes(n.type)).length
+                      : unreadCount;
+                    const meta = FILTER_META[filter];
 
                     return (
                       <button
                         key={filter}
                         onClick={() => setSelectedFilter(filter)}
-                        className={`flex w-full items-center justify-between px-4 py-3 rounded-md text-sm ${
-                          selectedFilter === filter
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "hover:bg-gray-50 text-gray-700"
-                        }`}
+                        onMouseEnter={() => setHoveredFilter(filter)}
+                        onMouseLeave={() => setHoveredFilter(null)}
+                        className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-all"
+                        style={{
+                          backgroundColor: isActive
+                            ? meta.bgColor
+                            : hoveredFilter === filter
+                            ? "rgba(36,76,90,0.04)"
+                            : "transparent",
+                          cursor: "pointer",
+                        }}
                       >
-                        <span>{filter}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span style={{ color: isActive ? meta.accentColor : "rgba(36,76,90,0.40)" }}>
+                            {meta.icon}
+                          </span>
+                          <span
+                            className="font-sans"
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? meta.accentColor : "rgba(36,76,90,0.70)",
+                              letterSpacing: "-0.01em",
+                            }}
+                          >
+                            {filter}
+                          </span>
+                        </div>
                         {unreadInFilter > 0 && (
-                          <span className="ml-2 min-w-[20px] h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center px-1">
+                          <span
+                            className="font-sans font-semibold rounded-full px-2 py-0.5 min-w-[20px] text-center"
+                            style={{
+                              fontSize: 11,
+                              backgroundColor: isActive ? meta.accentColor : "rgba(36,76,90,0.10)",
+                              color: isActive ? "#fff" : "rgba(36,76,90,0.60)",
+                            }}
+                          >
                             {unreadInFilter}
                           </span>
                         )}
@@ -294,89 +393,251 @@ export function NotificationsPage() {
                   })}
                 </div>
 
-                <div className="mt-6 rounded-lg bg-gray-50 p-4">
-                  <p className="text-sm text-gray-600">Unread notifications</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                {/* unread count summary */}
+                <div
+                  className="mt-5 rounded-xl p-4"
+                  style={{ backgroundColor: "rgba(198,209,102,0.18)", border: "1px solid rgba(198,209,102,0.35)" }}
+                >
+                  <p
+                    className="font-sans"
+                    style={{ fontSize: 12, color: "rgba(36,76,90,0.60)" }}
+                  >
+                    Unread
+                  </p>
+                  <p
+                    className="font-serif mt-0.5"
+                    style={{
+                      fontSize: 28,
+                      letterSpacing: "-0.04em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                      lineHeight: 1.1,
+                    }}
+                  >
                     {unreadCount}
                   </p>
                 </div>
               </div>
             </aside>
 
+            {/* ── main ── */}
             <section className="col-span-9">
-              {isLoading ? (
-                <div className="border rounded-xl p-10 text-center">
-                  <h3 className="text-xl font-semibold mb-2">
-                    Loading notifications...
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Please wait while we load your updates.
-                  </p>
+
+              {/* ── loading ── */}
+              {isLoading && (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl p-6"
+                      style={{
+                        backgroundColor: "#fff",
+                        border: "1px solid rgba(136,187,214,0.10)",
+                        boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                      }}
+                    >
+                      <div className="flex gap-4">
+                        <Skeleton className="w-11 h-11 rounded-full flex-shrink-0" />
+                        <div className="flex-1 space-y-2.5">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-4 w-40" />
+                            <Skeleton className="h-3 w-16 rounded-full" />
+                          </div>
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-3/4" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                        <Skeleton className="w-20 h-6 rounded-full flex-shrink-0" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : error ? (
-                <div className="border rounded-xl p-10 text-center">
-                  <h3 className="text-xl font-semibold mb-2">
+              )}
+
+              {/* ── error ── */}
+              {!isLoading && error && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div
+                    className="flex items-center justify-center rounded-2xl mb-5"
+                    style={{ width: 64, height: 64, backgroundColor: "rgba(220,38,38,0.08)" }}
+                  >
+                    <AlertCircle className="w-7 h-7" style={{ color: "#dc2626" }} />
+                  </div>
+                  <h3
+                    className="font-serif mb-2"
+                    style={{
+                      fontSize: 22,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                    }}
+                  >
                     Failed to load notifications
                   </h3>
-                  <p className="text-sm text-gray-600 mb-4">{error}</p>
+                  <p
+                    className="font-sans mb-6"
+                    style={{ fontSize: 14, color: "rgba(36,76,90,0.55)", maxWidth: 320 }}
+                  >
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="border px-5 py-3 rounded-md hover:bg-gray-50 text-sm"
+                    className="inline-flex items-center gap-2 font-sans font-semibold text-white rounded-sm px-5 py-2.5"
+                    style={{ fontSize: 14, backgroundColor: "#6096BA", cursor: "pointer" }}
                   >
-                    Retry
+                    <RefreshCw className="w-4 h-4" />
+                    Try again
                   </button>
                 </div>
-              ) : filteredNotifications.length === 0 ? (
-                <div className="border rounded-xl p-10 text-center">
-                  <h3 className="text-xl font-semibold mb-2">
-                    No notifications found
+              )}
+
+              {/* ── empty ── */}
+              {!isLoading && !error && filteredNotifications.length === 0 && (
+                <div
+                  className="flex flex-col items-center justify-center rounded-2xl py-20 text-center"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center rounded-2xl mb-4"
+                    style={{ width: 56, height: 56, backgroundColor: "rgba(198,209,102,0.25)" }}
+                  >
+                    <Bell className="w-6 h-6" style={{ color: "#6096BA" }} />
+                  </div>
+                  <h3
+                    className="font-serif mb-2"
+                    style={{
+                      fontSize: 22,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                    }}
+                  >
+                    All caught up
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    There are no notifications for this category yet.
+                  <p
+                    className="font-sans"
+                    style={{
+                      fontSize: 14,
+                      color: "rgba(36,76,90,0.55)",
+                      maxWidth: 280,
+                      lineHeight: 1.65,
+                    }}
+                  >
+                    {selectedFilter === "All"
+                      ? "No notifications yet. We'll let you know when something happens."
+                      : `No ${selectedFilter.toLowerCase()} notifications yet.`}
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredNotifications.map((notification) => (
-                    <article
-                      key={notification.id}
-                      className={`border rounded-xl p-6 transition-all ${
-                        notification.isRead ? "bg-white" : "bg-emerald-50/40"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-11 h-11 rounded-full bg-white border flex items-center justify-center shrink-0">
-                            {getTypeIcon(notification.type)}
-                          </div>
+              )}
 
-                          <div>
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {notification.title}
-                              </h3>
+              {/* ── notification list ── */}
+              {!isLoading && !error && filteredNotifications.length > 0 && (
+                <div className="space-y-3">
+                  {filteredNotifications.map((notification) => {
+                    const meta = FILTER_META[notification.filterType];
 
-                              {!notification.isRead && (
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-                              )}
+                    return (
+                      <article
+                        key={notification.id}
+                        className="rounded-2xl overflow-hidden transition-all"
+                        style={{
+                          backgroundColor: "#fff",
+                          border: notification.isRead
+                            ? "1px solid rgba(136,187,214,0.10)"
+                            : `1px solid ${meta.accentColor}28`,
+                          boxShadow: "0 4px 20px rgba(36,76,90,0.07)",
+                        }}
+                      >
+                        {/* unread accent bar */}
+                        {!notification.isRead && (
+                          <div style={{ height: 3, backgroundColor: meta.accentColor }} />
+                        )}
+
+                        <div className="px-6 py-5">
+                          <div className="flex items-start gap-4">
+                            {/* icon */}
+                            <div
+                              className="flex items-center justify-center rounded-xl flex-shrink-0"
+                              style={{
+                                width: 40,
+                                height: 40,
+                                backgroundColor: notification.isRead
+                                  ? "rgba(36,76,90,0.05)"
+                                  : meta.bgColor,
+                                color: notification.isRead
+                                  ? "rgba(36,76,90,0.40)"
+                                  : meta.accentColor,
+                              }}
+                            >
+                              {/* re-render icons with correct sizing */}
+                              {notification.type === "REPORT_UPDATE" && <FileText className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />}
+                              {notification.type === "FORUM_REPLY" && <MessageSquare style={{ width: 18, height: 18 }} />}
+                              {notification.type === "ACHIEVEMENT" && <Trophy style={{ width: 18, height: 18 }} />}
+                              {notification.type === "WARNING" && <ShieldAlert style={{ width: 18, height: 18 }} />}
+                              {notification.type === "SYSTEM" && <Bell style={{ width: 18, height: 18 }} />}
                             </div>
 
-                            <p className="text-sm text-gray-600 leading-6 mb-3">
-                              {notification.description}
-                            </p>
+                            {/* content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                                <h3
+                                  className="font-sans font-semibold"
+                                  style={{
+                                    fontSize: 14,
+                                    color: "#274C77",
+                                    letterSpacing: "-0.01em",
+                                  }}
+                                >
+                                  {notification.title}
+                                </h3>
+                                {!notification.isRead && (
+                                  <span
+                                    className="w-2 h-2 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: meta.accentColor }}
+                                  />
+                                )}
+                              </div>
 
-                            <div className="text-sm text-gray-500">
-                              {notification.time}
+                              <p
+                                className="font-sans mb-2"
+                                style={{
+                                  fontSize: 13,
+                                  color: "rgba(36,76,90,0.60)",
+                                  letterSpacing: "-0.01em",
+                                  lineHeight: 1.65,
+                                }}
+                              >
+                                {notification.description}
+                              </p>
+
+                              <span
+                                className="font-sans"
+                                style={{ fontSize: 12, color: "rgba(36,76,90,0.40)" }}
+                              >
+                                {notification.time}
+                              </span>
                             </div>
+
+                            {/* type badge */}
+                            <span
+                              className="font-sans font-semibold rounded-full px-3 py-1 flex-shrink-0"
+                              style={{
+                                fontSize: 11,
+                                backgroundColor: meta.bgColor,
+                                color: meta.accentColor,
+                              }}
+                            >
+                              {notification.filterType}
+                            </span>
                           </div>
                         </div>
-
-                        <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700 shrink-0">
-                          {notification.filterType}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>

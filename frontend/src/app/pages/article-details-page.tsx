@@ -37,6 +37,66 @@ function saveHelpful(set: Set<number>) {
   } catch {}
 }
 
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-lg ${className}`}
+      style={{ backgroundColor: "rgba(36,76,90,0.07)" }}
+    />
+  );
+}
+
+function ArticleLoadingSkeleton() {
+  return (
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#F9F7F3", fontFamily: "DM Sans, sans-serif" }}
+    >
+      <Header />
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 py-10">
+          <Skeleton className="h-5 w-40 mb-10" />
+          <div className="grid grid-cols-12 gap-8">
+            <div className="col-span-12 lg:col-span-8 space-y-5">
+              <div
+                className="rounded-2xl border p-8 space-y-5"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+              >
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-5/6" />
+                <div className="space-y-3 pt-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-5 w-full" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="col-span-12 lg:col-span-4 space-y-4">
+              <div
+                className="rounded-2xl border p-6 space-y-4"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+              >
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 export function ArticleDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -45,6 +105,8 @@ export function ArticleDetailsPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [helpful, setHelpful] = useState<Set<number>>(new Set());
   const [shareToast, setShareToast] = useState(false);
+  const [helpfulHovered, setHelpfulHovered] = useState(false);
+  const [shareHovered, setShareHovered] = useState(false);
 
   useEffect(() => {
     setArticles(loadArticles());
@@ -85,40 +147,49 @@ export function ArticleDetailsPage() {
     setTimeout(() => setShareToast(false), 2500);
   }
 
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (articles.length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white">
-        <Header />
-        <main className="flex-1">
-          <div className="max-w-4xl mx-auto px-8 py-16">
-            <div className="border rounded-xl p-10 text-center text-gray-500 text-sm">
-              Loading…
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <ArticleLoadingSkeleton />;
   }
 
+  // ── Not found state ───────────────────────────────────────────────────────
   if (!article) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div
+        className="min-h-screen flex flex-col"
+        style={{ backgroundColor: "#F9F7F3", fontFamily: "DM Sans, sans-serif", color: "#274C77" }}
+      >
         <Header />
-        <main className="flex-1">
-          <div className="max-w-4xl mx-auto px-8 py-16">
-            <div className="border rounded-xl p-10 text-center">
-              <h1 className="text-3xl font-bold mb-3">Article not found</h1>
-              <p className="text-gray-600 mb-6">
-                The resource you are looking for does not exist or may have been removed.
-              </p>
-              <button
-                onClick={() => navigate("/knowledge-base")}
-                className="bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800"
-              >
-                Return to Knowledge Base
-              </button>
+        <main className="flex-1 flex items-center justify-center px-6 py-20">
+          <div
+            className="w-full max-w-lg rounded-2xl border p-12 text-center"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5"
+              style={{ backgroundColor: "#E8F4F8" }}
+            >
+              <BookOpen className="w-5 h-5" style={{ color: "#6096BA" }} />
             </div>
+            <h1
+              className="text-[28px] leading-tight tracking-[-0.03em] mb-3"
+              style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+            >
+              Article not found
+            </h1>
+            <p
+              className="text-sm leading-[1.75] mb-7"
+              style={{ color: "#274C77", opacity: 0.6, fontFamily: "DM Sans, sans-serif" }}
+            >
+              The resource you are looking for does not exist or may have been removed.
+            </p>
+            <button
+              onClick={() => navigate("/knowledge-base")}
+              className="rounded-sm px-6 py-3 text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+            >
+              Return to Knowledge Base
+            </button>
           </div>
         </main>
         <Footer />
@@ -126,67 +197,151 @@ export function ArticleDetailsPage() {
     );
   }
 
+  // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#F9F7F3", fontFamily: "DM Sans, sans-serif", color: "#274C77" }}
+    >
       <Header />
 
+      {/* ── Share toast ───────────────────────────────────────────────────── */}
       {shareToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-lg border bg-emerald-50 border-emerald-200 text-emerald-800 text-sm font-medium">
-          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-lg border text-sm font-semibold"
+          style={{
+            backgroundColor: "#E8F4F8",
+            borderColor: "#6096BA",
+            color: "#274C77",
+            fontFamily: "DM Sans, sans-serif",
+          }}
+        >
+          <Check className="w-4 h-4 shrink-0" style={{ color: "#6096BA" }} />
           Link copied to clipboard!
         </div>
       )}
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
+      {/* ── Hero strip ────────────────────────────────────────────────────── */}
+      <div
+        className="relative overflow-hidden border-b"
+        style={{ backgroundColor: "#A3CEF1", borderColor: "rgba(36,76,90,0.12)" }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#274C77 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 py-8">
           <button
             onClick={() => navigate("/knowledge-base")}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-8"
+            className="inline-flex items-center gap-2 text-sm font-semibold transition-opacity mb-4 hover:opacity-70"
+            style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Knowledge Base
           </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="inline-flex items-center px-3 py-1 rounded-full border text-[12px] font-semibold tracking-wide"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.55)",
+                borderColor: "rgba(36,76,90,0.15)",
+                color: "#274C77",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              {article.category}
+            </span>
+            <span
+              className="text-[13px]"
+              style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+            >
+              {article.readTime}
+            </span>
+          </div>
+        </div>
+      </div>
 
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 py-10">
           <div className="grid grid-cols-12 gap-8">
-            <section className="col-span-8">
-              <article className="border rounded-xl p-8">
-                <div className="flex items-center justify-between mb-5">
-                  <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                    {article.category}
-                  </span>
-                  <span className="text-sm text-gray-500">{article.readTime}</span>
-                </div>
 
-                <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
+            {/* ── Article body ─────────────────────────────────────────────── */}
+            <section className="col-span-12 lg:col-span-8">
+              <article
+                className="rounded-2xl border p-8"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+              >
+                <h1
+                  className="text-[34px] sm:text-[40px] leading-[1.1] tracking-[-0.04em] mb-5"
+                  style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                >
+                  {article.title}
+                </h1>
 
-                <p className="text-lg text-gray-600 leading-8 mb-8">
+                <p
+                  className="text-[17px] leading-[1.8] mb-8 pb-8 border-b"
+                  style={{
+                    color: "#274C77",
+                    opacity: 0.7,
+                    fontFamily: "DM Sans, sans-serif",
+                    borderColor: "#D6DCE1",
+                  }}
+                >
                   {article.intro ?? article.description}
                 </p>
 
-                <div className="space-y-6 text-[15px] leading-8 text-gray-700">
+                <div className="space-y-5">
                   {(article.content ?? []).map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
+                    <p
+                      key={index}
+                      className="text-[15px] leading-[1.85]"
+                      style={{ color: "#274C77", opacity: 0.72, fontFamily: "DM Sans, sans-serif" }}
+                    >
+                      {paragraph}
+                    </p>
                   ))}
                 </div>
 
-                <div className="border-t mt-8 pt-6 flex items-center gap-4 text-sm text-gray-600">
+                {/* Footer actions */}
+                <div
+                  className="mt-10 pt-6 border-t flex items-center gap-5"
+                  style={{ borderColor: "#D6DCE1" }}
+                >
                   <button
                     onClick={handleHelpful}
-                    className={`inline-flex items-center gap-2 transition-colors ${
-                      isHelpful
-                        ? "text-red-500 hover:text-red-600"
-                        : "hover:text-black"
-                    }`}
+                    onMouseEnter={() => setHelpfulHovered(true)}
+                    onMouseLeave={() => setHelpfulHovered(false)}
+                    className="inline-flex items-center gap-2 text-sm font-semibold transition-opacity"
+                    style={{
+                      color: isHelpful ? "#E2445C" : "#274C77",
+                      opacity: isHelpful ? 1 : helpfulHovered ? 0.9 : 0.55,
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
                   >
                     <Heart
-                      className={`w-4 h-4 ${isHelpful ? "fill-red-500 stroke-red-500" : ""}`}
+                      className="w-4 h-4"
+                      style={
+                        isHelpful
+                          ? { fill: "#E2445C", stroke: "#E2445C" }
+                          : { fill: "none", stroke: "currentColor" }
+                      }
                     />
                     {isHelpful ? "Marked as helpful" : "Helpful"}
                   </button>
 
                   <button
                     onClick={handleShare}
-                    className="inline-flex items-center gap-2 hover:text-black transition-colors"
+                    onMouseEnter={() => setShareHovered(true)}
+                    onMouseLeave={() => setShareHovered(false)}
+                    className="inline-flex items-center gap-2 text-sm font-semibold transition-opacity"
+                    style={{
+                      color: "#274C77",
+                      opacity: shareHovered ? 0.9 : 0.55,
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
                   >
                     <Share2 className="w-4 h-4" />
                     Share
@@ -195,50 +350,75 @@ export function ArticleDetailsPage() {
               </article>
             </section>
 
-            <aside className="col-span-4 space-y-6">
-              <div className="border rounded-xl p-6 bg-emerald-50">
+            {/* ── Sidebar ───────────────────────────────────────────────────── */}
+            <aside className="col-span-12 lg:col-span-4 space-y-5">
+
+              {/* Need help card */}
+              <div
+                className="rounded-2xl border p-6"
+                style={{ backgroundColor: "#A3CEF1", borderColor: "rgba(36,76,90,0.12)" }}
+              >
                 <div className="flex items-start gap-3 mb-3">
-                  <AlertCircle className="w-5 h-5 text-emerald-700 mt-0.5" />
-                  <h3 className="font-semibold">Need help right now?</h3>
+                  <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: "#274C77", opacity: 0.7 }} />
+                  <h3
+                    className="text-[16px] font-semibold leading-tight tracking-[-0.02em]"
+                    style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                  >
+                    Need help right now?
+                  </h3>
                 </div>
-                <p className="text-sm text-gray-700 leading-6 mb-4">
+                <p
+                  className="text-sm leading-[1.75] mb-5"
+                  style={{ color: "#274C77", opacity: 0.65, fontFamily: "DM Sans, sans-serif" }}
+                >
                   If this topic feels personal or urgent, you can submit an anonymous
                   report or reach out through the support forum.
                 </p>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <button
                     onClick={() => navigate("/report")}
-                    className="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800 text-sm font-medium"
+                    className="w-full py-3 rounded-sm text-sm font-semibold text-white transition-colors"
+                    style={{ backgroundColor: "#274C77", fontFamily: "DM Sans, sans-serif" }}
                   >
                     Anonymous Report
                   </button>
                   <button
                     onClick={() => navigate("/forum")}
-                    className="w-full border py-3 rounded-md hover:bg-white text-sm font-medium"
+                    className="w-full py-3 rounded-sm text-sm font-semibold border transition-colors"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.55)",
+                      borderColor: "rgba(36,76,90,0.2)",
+                      color: "#274C77",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
                   >
                     Support Forum
                   </button>
                 </div>
               </div>
 
+              {/* Related articles */}
               {relatedArticles.length > 0 && (
-                <div className="border rounded-xl p-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <BookOpen className="w-5 h-5 text-gray-700 mt-0.5" />
-                    <h4 className="font-semibold">More resources</h4>
+                <div
+                  className="rounded-2xl border p-6"
+                  style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+                >
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <BookOpen className="w-4 h-4 shrink-0" style={{ color: "#274C77", opacity: 0.5 }} />
+                    <h4
+                      className="text-[14px] font-semibold"
+                      style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+                    >
+                      More resources
+                    </h4>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {relatedArticles.map((related) => (
-                      <button
+                      <RelatedArticleButton
                         key={related.id}
+                        related={related}
                         onClick={() => navigate(`/knowledge-base/${related.id}`)}
-                        className="w-full text-left border rounded-md px-4 py-3 text-sm hover:bg-gray-50 transition-colors"
-                      >
-                        <span className="text-xs text-emerald-600 block mb-1">
-                          {related.category}
-                        </span>
-                        {related.title}
-                      </button>
+                      />
                     ))}
                   </div>
                 </div>
@@ -250,5 +430,42 @@ export function ArticleDetailsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+function RelatedArticleButton({
+  related,
+  onClick,
+}: {
+  related: Article;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="w-full text-left rounded-xl px-4 py-3.5 border transition-colors"
+      style={{
+        backgroundColor: hovered ? "#F0F8FA" : "#FAFAFA",
+        borderColor: hovered ? "#6096BA" : "#D6DCE1",
+        fontFamily: "DM Sans, sans-serif",
+      }}
+    >
+      <span
+        className="text-[11px] font-bold uppercase tracking-[0.16em] block mb-1"
+        style={{ color: "#6096BA", fontFamily: "DM Sans, sans-serif" }}
+      >
+        {related.category}
+      </span>
+      <span
+        className="text-sm font-medium leading-snug"
+        style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+      >
+        {related.title}
+      </span>
+    </button>
   );
 }

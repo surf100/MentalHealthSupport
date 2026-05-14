@@ -13,6 +13,11 @@ import {
   Check,
   Camera,
   Loader2,
+  AlertCircle,
+  RefreshCw,
+  Globe,
+  Palette,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -42,11 +47,6 @@ function formatMemberSince(dateString: string) {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-/**
- * Applies languagePreference to the HTML element so that browser-level
- * language-sensitive features (spell-check, screen-readers, etc.) pick it up.
- * You can extend this with i18next / your own i18n solution later.
- */
 function applyLanguagePreference(lang: string) {
   if (lang) {
     document.documentElement.lang = lang;
@@ -66,8 +66,7 @@ async function getRecentActivity(): Promise<ActivityItem[]> {
 }
 
 // ─── avatar upload (imgbb) ────────────────────────────────────────────────────
-// Get a free API key at https://api.imgbb.com/
-// Put it in your .env as VITE_IMGBB_API_KEY=your_key_here
+
 const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY as string | undefined;
 
 async function uploadAvatarToImgbb(file: File): Promise<string> {
@@ -85,6 +84,80 @@ async function uploadAvatarToImgbb(file: File): Promise<string> {
   if (!res.ok) throw new Error("Image upload failed");
   const json = await res.json();
   return json.data.url as string;
+}
+
+// ─── toggle switch ────────────────────────────────────────────────────────────
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => !disabled && onChange(!checked)}
+      style={{
+        width: 40,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: checked ? "#6096BA" : "rgba(36,76,90,0.15)",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        position: "relative",
+        transition: "background 0.2s",
+        flexShrink: 0,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 3,
+          left: checked ? 21 : 3,
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          backgroundColor: "#fff",
+          transition: "left 0.2s",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.20)",
+        }}
+      />
+    </button>
+  );
+}
+
+// ─── activity accent color ────────────────────────────────────────────────────
+
+function activityAccentColor(type: string): string {
+  switch (type) {
+    case "REPORT_UPDATE":
+      return "#6096BA";
+    case "FORUM_REPLY":
+      return "#F9F7F3";
+    case "ACHIEVEMENT":
+      return "#e8a020";
+    default:
+      return "rgba(36,76,90,0.15)";
+  }
+}
+
+// ─── skeleton block ───────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded ${className ?? ""}`}
+      style={{ backgroundColor: "rgba(36,76,90,0.07)" }}
+    />
+  );
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
@@ -119,6 +192,10 @@ export function ProfilePage() {
 
   // stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  // hover states
+  const [hoveredStat, setHoveredStat] = useState<string | null>(null);
+  const [hoveredAction, setHoveredAction] = useState<string | null>(null);
 
   // ── load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -178,7 +255,6 @@ export function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // local preview immediately
     const objectUrl = URL.createObjectURL(file);
     setAvatarPreview(objectUrl);
 
@@ -258,366 +334,892 @@ export function ProfilePage() {
     }
   };
 
-  // ── activity icon ───────────────────────────────────────────────────────────
-  const activityIconClass = (type: string) => {
-    switch (type) {
-      case "REPORT_UPDATE":
-        return "text-blue-500";
-      case "FORUM_REPLY":
-        return "text-emerald-500";
-      case "ACHIEVEMENT":
-        return "text-amber-500";
-      default:
-        return "text-gray-400";
-    }
-  };
-
-  // ── current avatar to display ───────────────────────────────────────────────
   const displayAvatar = avatarPreview ?? avatarUrl;
 
-  // ── render ──────────────────────────────────────────────────────────────────
+  // ── initials fallback ────────────────────────────────────────────────────────
+  const initials = displayTitle
+    ? displayTitle
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "?";
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F6F8F9" }}>
       <Header />
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10">
-            <h1 className="text-5xl font-bold mb-3">Profile</h1>
-            <p className="text-lg text-gray-600 max-w-3xl">
-              Manage your account, review your activity, and access your
-              personal SafeSpace features.
+      {/* ── hero strip ── */}
+      <div className="relative overflow-hidden" style={{ backgroundColor: "#F9F7F3" }}>
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#6096BA 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-8 py-10 flex items-center justify-between">
+          <div>
+            <p
+              className="font-sans font-bold uppercase tracking-[0.20em] mb-2"
+              style={{ fontSize: 11, color: "#6096BA" }}
+            >
+              Account
+            </p>
+            <h1
+              className="font-serif"
+              style={{
+                fontSize: 38,
+                letterSpacing: "-0.04em",
+                color: "#274C77",
+                lineHeight: 1.15,
+                fontFamily: "DM Serif Display, serif",
+              }}
+            >
+              Your Profile
+            </h1>
+            <p
+              className="font-sans mt-2"
+              style={{
+                fontSize: 15,
+                color: "rgba(36,76,90,0.65)",
+                letterSpacing: "-0.01em",
+                lineHeight: 1.75,
+              }}
+            >
+              Manage your identity, preferences, and account settings.
             </p>
           </div>
 
+          {/* avatar preview in hero */}
+          {!isLoading && profile && (
+            <div
+              className="hidden md:flex items-center justify-center rounded-full overflow-hidden flex-shrink-0"
+              style={{
+                width: 72,
+                height: 72,
+                backgroundColor: "#6096BA",
+                boxShadow: "0 4px 20px rgba(36,76,90,0.20)",
+              }}
+            >
+              {displayAvatar ? (
+                <img
+                  src={displayAvatar}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span
+                  className="font-sans font-semibold text-white"
+                  style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+                >
+                  {initials}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-8 py-10">
+
+          {/* ── toast messages ── */}
+          {successMessage && (
+            <div
+              className="mb-6 rounded-xl px-5 py-4 flex items-center gap-3"
+              style={{
+                backgroundColor: "rgba(136,187,214,0.08)",
+                border: "1px solid rgba(136,187,214,0.20)",
+              }}
+            >
+              <div
+                className="flex items-center justify-center rounded-full flex-shrink-0"
+                style={{ width: 28, height: 28, backgroundColor: "#6096BA" }}
+              >
+                <Check className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span
+                className="font-sans text-[14px]"
+                style={{ color: "#274C77", letterSpacing: "-0.01em" }}
+              >
+                {successMessage}
+              </span>
+            </div>
+          )}
+
+          {error && profile && (
+            <div
+              className="mb-6 rounded-xl px-5 py-4 flex items-center gap-3"
+              style={{
+                backgroundColor: "rgba(220,38,38,0.06)",
+                border: "1px solid rgba(220,38,38,0.20)",
+              }}
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#dc2626" }} />
+              <span className="font-sans text-[14px]" style={{ color: "#274C77" }}>
+                {error}
+              </span>
+            </div>
+          )}
+
+          {/* ── loading state ── */}
           {isLoading ? (
-            <div className="border rounded-xl p-8 text-gray-600">
-              Loading profile...
+            <div className="grid grid-cols-12 gap-8">
+              <div className="col-span-4">
+                <div
+                  className="rounded-2xl p-8"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-4">
+                    <Skeleton className="w-24 h-24 rounded-full" />
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-9 w-28" />
+                  </div>
+                  <div className="mt-8 space-y-4 border-t pt-6" style={{ borderColor: "rgba(36,76,90,0.08)" }}>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+                </div>
+              </div>
+              <div className="col-span-8 space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl p-6"
+                      style={{
+                        backgroundColor: "#fff",
+                        border: "1px solid rgba(136,187,214,0.10)",
+                        boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                      }}
+                    >
+                      <Skeleton className="h-5 w-5 mb-4 rounded" />
+                      <Skeleton className="h-5 w-3/4 mb-2" />
+                      <Skeleton className="h-8 w-1/2 mb-2" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  ))}
+                </div>
+                <div
+                  className="rounded-2xl p-8"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                  }}
+                >
+                  <Skeleton className="h-6 w-40 mb-6" />
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="mb-4 flex gap-4">
+                      <Skeleton className="w-1 h-16 rounded-full flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-3 w-1/4" />
+                        <Skeleton className="h-3 w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+
           ) : error && !profile ? (
-            <div className="border border-red-200 bg-red-50 rounded-xl p-6 text-red-700">
-              {error}
+            /* ── error state ── */
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div
+                className="flex items-center justify-center rounded-2xl mb-5"
+                style={{ width: 64, height: 64, backgroundColor: "rgba(220,38,38,0.08)" }}
+              >
+                <AlertCircle className="w-7 h-7" style={{ color: "#dc2626" }} />
+              </div>
+              <h2
+                className="font-serif mb-2"
+                style={{
+                  fontSize: 24,
+                  letterSpacing: "-0.03em",
+                  color: "#274C77",
+                  fontFamily: "DM Serif Display, serif",
+                }}
+              >
+                Couldn't load your profile
+              </h2>
+              <p
+                className="font-sans mb-6"
+                style={{ fontSize: 15, color: "rgba(36,76,90,0.60)", maxWidth: 360 }}
+              >
+                {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-2 font-sans font-semibold text-white rounded-sm px-5 py-2.5"
+                style={{ backgroundColor: "#6096BA", fontSize: 14 }}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try again
+              </button>
             </div>
+
           ) : profile ? (
-            <>
-              {successMessage && (
-                <div className="mb-6 border border-green-200 bg-green-50 rounded-xl p-4 text-green-700 flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  {successMessage}
-                </div>
-              )}
+            <div className="grid grid-cols-12 gap-8">
 
-              {error && (
-                <div className="mb-6 border border-red-200 bg-red-50 rounded-xl p-4 text-red-700 flex items-center gap-2">
-                  <X className="w-4 h-4" />
-                  {error}
-                </div>
-              )}
+              {/* ── left column ── */}
+              <section className="col-span-4 space-y-5">
 
-              <div className="grid grid-cols-12 gap-8">
-                {/* ── left column ── */}
-                <section className="col-span-4">
-                  <div className="border rounded-xl p-8">
-                    <div className="flex flex-col items-center text-center">
-
-                      {/* avatar */}
-                      <div className="relative mb-5">
-                        <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                          {displayAvatar ? (
-                            <img
-                              src={displayAvatar}
-                              alt="Avatar"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-10 h-10 text-gray-500" />
-                          )}
-                        </div>
-
-                        {/* upload overlay — only when editing */}
-                        {isEditing && (
-                          <>
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={isUploadingAvatar}
-                              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 disabled:opacity-60"
-                              title="Change photo"
-                            >
-                              {isUploadingAvatar ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Camera className="w-4 h-4" />
-                              )}
-                            </button>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleAvatarFileChange}
-                            />
-                          </>
+                {/* profile card */}
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                  }}
+                >
+                  {/* card top: avatar + name */}
+                  <div className="flex flex-col items-center text-center px-8 pt-8 pb-6">
+                    {/* avatar */}
+                    <div className="relative mb-5">
+                      <div
+                        className="flex items-center justify-center rounded-full overflow-hidden"
+                        style={{
+                          width: 96,
+                          height: 96,
+                          backgroundColor: "#F9F7F3",
+                          boxShadow: "0 4px 20px rgba(36,76,90,0.15)",
+                        }}
+                      >
+                        {displayAvatar ? (
+                          <img
+                            src={displayAvatar}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="font-sans font-semibold"
+                            style={{ fontSize: 26, color: "#274C77", letterSpacing: "-0.02em" }}
+                          >
+                            {initials}
+                          </span>
                         )}
                       </div>
 
-                      {isUploadingAvatar && (
-                        <p className="text-xs text-gray-500 mb-2">
-                          Uploading photo…
-                        </p>
-                      )}
-
-                      <h2 className="text-2xl font-semibold mb-2">
-                        {displayTitle}
-                      </h2>
-                      <p className="text-sm text-gray-500 mb-6">
-                        Member since {formatMemberSince(profile.memberSince)}
-                      </p>
-
-                      <button
-                        onClick={handleEditToggle}
-                        className="border px-4 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2"
-                      >
-                        <Pencil className="w-4 h-4" />
-                        {isEditing ? "Cancel Editing" : "Edit Profile"}
-                      </button>
-                    </div>
-
-                    <div className="border-t mt-8 pt-6 space-y-4">
-                      <div className="flex items-center gap-3 text-sm text-gray-700">
-                        <Mail className="w-4 h-4" />
-                        {profile.email}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-700">
-                        <Shield className="w-4 h-4" />
-                        {profile.privacyModeEnabled
-                          ? "Privacy mode enabled"
-                          : "Privacy mode disabled"}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-700">
-                        <Bell className="w-4 h-4" />
-                        {profile.notificationsEnabled
-                          ? "Notifications enabled"
-                          : "Notifications disabled"}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── editable profile info ── */}
-                  <div className="border rounded-xl p-8 mt-6">
-                    <h3 className="text-xl font-semibold mb-5">
-                      Editable Profile Info
-                    </h3>
-
-                    <div className="space-y-5">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Display name
-                        </label>
-                        <input
-                          type="text"
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                          disabled={!isEditing}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Bio
-                        </label>
-                        <textarea
-                          value={bio}
-                          onChange={(e) => setBio(e.target.value)}
-                          disabled={!isEditing}
-                          rows={4}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between border rounded-lg px-4 py-3">
-                        <span className="text-sm font-medium">Privacy mode</span>
-                        <input
-                          type="checkbox"
-                          checked={privacyModeEnabled}
-                          onChange={(e) =>
-                            setPrivacyModeEnabled(e.target.checked)
-                          }
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between border rounded-lg px-4 py-3">
-                        <span className="text-sm font-medium">Notifications</span>
-                        <input
-                          type="checkbox"
-                          checked={notificationsEnabled}
-                          onChange={(e) =>
-                            setNotificationsEnabled(e.target.checked)
-                          }
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Theme preference
-                        </label>
-                        <select
-                          value={themePreference}
-                          onChange={(e) => setThemePreference(e.target.value)}
-                          disabled={!isEditing}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                        >
-                          <option value="light">Light</option>
-                          <option value="dark">Dark</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Language preference
-                        </label>
-                        <select
-                          value={languagePreference}
-                          onChange={(e) => {
-                            setLanguagePreference(e.target.value);
-                            // apply immediately for live preview while editing
-                            applyLanguagePreference(e.target.value);
-                          }}
-                          disabled={!isEditing}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                        >
-                          <option value="en">English</option>
-                          <option value="ru">Русский</option>
-                          <option value="kz">Қазақша</option>
-                        </select>
-                      </div>
-
+                      {/* upload button — edit mode only */}
                       {isEditing && (
-                        <button
-                          onClick={handleSave}
-                          disabled={isSaving || isUploadingAvatar}
-                          className="w-full bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800 disabled:opacity-60"
-                        >
-                          {isSaving ? "Saving..." : "Save Profile"}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="absolute bottom-0 right-0 flex items-center justify-center rounded-full text-white"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              backgroundColor: "#6096BA",
+                              border: "2px solid #fff",
+                              cursor: isUploadingAvatar ? "not-allowed" : "pointer",
+                              opacity: isUploadingAvatar ? 0.7 : 1,
+                            }}
+                            title="Change photo"
+                          >
+                            {isUploadingAvatar ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Camera className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleAvatarFileChange}
+                          />
+                        </>
                       )}
                     </div>
-                  </div>
-                </section>
 
-                {/* ── right column ── */}
-                <section className="col-span-8 space-y-6">
-                  <div className="grid grid-cols-3 gap-6">
-                    <button
-                      onClick={() => navigate("/my-reports")}
-                      className="border rounded-xl p-6 text-left hover:shadow-md transition-all"
-                    >
-                      <FileText className="w-6 h-6 text-blue-600 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">My Reports</h3>
-                      {stats !== null && (
-                        <p className="text-3xl font-bold text-blue-700 mb-2">{stats.reportsCount}</p>
-                      )}
-                      <p className="text-sm text-gray-600 leading-6">
-                        Track your submitted reports and their review status.
+                    {isUploadingAvatar && (
+                      <p
+                        className="font-sans mb-2"
+                        style={{ fontSize: 12, color: "rgba(36,76,90,0.50)" }}
+                      >
+                        Uploading photo…
                       </p>
-                    </button>
+                    )}
 
-                    <button
-                      onClick={() => navigate("/notifications")}
-                      className="border rounded-xl p-6 text-left hover:shadow-md transition-all"
+                    <h2
+                      className="font-serif mb-1"
+                      style={{
+                        fontSize: 22,
+                        letterSpacing: "-0.03em",
+                        color: "#274C77",
+                        fontFamily: "DM Serif Display, serif",
+                      }}
                     >
-                      <Bell className="w-6 h-6 text-emerald-600 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 leading-6">
-                        Stay updated with report activity, replies, and alerts.
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => navigate("/achievements")}
-                      className="border rounded-xl p-6 text-left hover:shadow-md transition-all"
-                    >
-                      <Trophy className="w-6 h-6 text-amber-600 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        Achievements
-                      </h3>
-                      {stats !== null && (
-                        <p className="text-3xl font-bold text-amber-700 mb-2">{stats.achievementsCount}</p>
-                      )}
-                      <p className="text-sm text-gray-600 leading-6">
-                        See your earned badges and participation milestones.
-                      </p>
-                    </button>
-                  </div>
-
-                  {/* ── recent activity ── */}
-                  <div className="border rounded-xl p-8">
-                    <h2 className="text-2xl font-semibold mb-5">
-                      Recent Activity
+                      {displayTitle}
                     </h2>
+                    <p
+                      className="font-sans mb-5"
+                      style={{ fontSize: 13, color: "rgba(36,76,90,0.50)", letterSpacing: "-0.01em" }}
+                    >
+                      Member since {formatMemberSince(profile.memberSince)}
+                    </p>
 
-                    {activityLoading ? (
-                      <div className="text-sm text-gray-500">
-                        Loading activity…
+                    <button
+                      onClick={handleEditToggle}
+                      className="inline-flex items-center gap-2 font-sans font-semibold rounded-sm px-5 py-2"
+                      style={{
+                        fontSize: 13,
+                        color: isEditing ? "rgba(36,76,90,0.70)" : "#274C77",
+                        border: "1px solid rgba(36,76,90,0.20)",
+                        backgroundColor: "transparent",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {isEditing ? (
+                        <>
+                          <X className="w-3.5 h-3.5" />
+                          Cancel
+                        </>
+                      ) : (
+                        <>
+                          <Pencil className="w-3.5 h-3.5" />
+                          Edit Profile
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* meta info */}
+                  <div
+                    className="px-8 py-5 space-y-3"
+                    style={{ borderTop: "1px solid rgba(36,76,90,0.07)" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mail className="w-4 h-4 flex-shrink-0" style={{ color: "#6096BA" }} />
+                      <span
+                        className="font-sans truncate"
+                        style={{ fontSize: 13, color: "rgba(36,76,90,0.65)", letterSpacing: "-0.01em" }}
+                      >
+                        {profile.email}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-4 h-4 flex-shrink-0" style={{ color: "#6096BA" }} />
+                      <span
+                        className="font-sans"
+                        style={{ fontSize: 13, color: "rgba(36,76,90,0.65)", letterSpacing: "-0.01em" }}
+                      >
+                        {profile.privacyModeEnabled ? "Privacy mode on" : "Privacy mode off"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Bell className="w-4 h-4 flex-shrink-0" style={{ color: "#6096BA" }} />
+                      <span
+                        className="font-sans"
+                        style={{ fontSize: 13, color: "rgba(36,76,90,0.65)", letterSpacing: "-0.01em" }}
+                      >
+                        {profile.notificationsEnabled ? "Notifications on" : "Notifications off"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── profile settings card ── */}
+                <div
+                  className="rounded-2xl p-7"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                  }}
+                >
+                  <p
+                    className="font-sans font-bold uppercase tracking-[0.20em] mb-5"
+                    style={{ fontSize: 11, color: "#6096BA" }}
+                  >
+                    Profile Settings
+                  </p>
+
+                  <div className="space-y-5">
+                    {/* display name */}
+                    <div>
+                      <label
+                        className="block font-sans font-semibold mb-1.5"
+                        style={{ fontSize: 13, color: "#274C77" }}
+                      >
+                        Display name
+                      </label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        disabled={!isEditing}
+                        placeholder="Your name"
+                        className="w-full font-sans rounded-lg outline-none transition-all"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 14px",
+                          backgroundColor: "#F6F8F9",
+                          border: "1px solid rgba(36,76,90,0.15)",
+                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
+                          letterSpacing: "-0.01em",
+                        }}
+                      />
+                    </div>
+
+                    {/* bio */}
+                    <div>
+                      <label
+                        className="block font-sans font-semibold mb-1.5"
+                        style={{ fontSize: 13, color: "#274C77" }}
+                      >
+                        Bio
+                      </label>
+                      <textarea
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        disabled={!isEditing}
+                        rows={3}
+                        placeholder="A few words about yourself"
+                        className="w-full font-sans rounded-lg outline-none resize-none transition-all"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 14px",
+                          backgroundColor: "#F6F8F9",
+                          border: "1px solid rgba(36,76,90,0.15)",
+                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
+                          letterSpacing: "-0.01em",
+                          lineHeight: 1.6,
+                        }}
+                      />
+                    </div>
+
+                    {/* divider */}
+                    <div style={{ borderTop: "1px solid rgba(36,76,90,0.07)", paddingTop: 4 }} />
+
+                    {/* privacy mode */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p
+                          className="font-sans font-semibold"
+                          style={{ fontSize: 13, color: "#274C77" }}
+                        >
+                          Privacy mode
+                        </p>
+                        <p
+                          className="font-sans mt-0.5"
+                          style={{ fontSize: 12, color: "rgba(36,76,90,0.50)" }}
+                        >
+                          Hide identifying details
+                        </p>
                       </div>
-                    ) : recentActivity.length === 0 ? (
-                      <div className="text-sm text-gray-500">
-                        No recent activity yet.
+                      <Toggle
+                        checked={privacyModeEnabled}
+                        onChange={setPrivacyModeEnabled}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    {/* notifications */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p
+                          className="font-sans font-semibold"
+                          style={{ fontSize: 13, color: "#274C77" }}
+                        >
+                          Notifications
+                        </p>
+                        <p
+                          className="font-sans mt-0.5"
+                          style={{ fontSize: 12, color: "rgba(36,76,90,0.50)" }}
+                        >
+                          Report & activity alerts
+                        </p>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {recentActivity.map((item, idx) => (
-                          <div key={idx} className="border rounded-lg p-5">
-                            <div
-                              className={`text-sm font-medium mb-1 ${activityIconClass(item.type)}`}
+                      <Toggle
+                        checked={notificationsEnabled}
+                        onChange={setNotificationsEnabled}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    {/* divider */}
+                    <div style={{ borderTop: "1px solid rgba(36,76,90,0.07)", paddingTop: 4 }} />
+
+                    {/* theme */}
+                    <div>
+                      <label
+                        className="flex items-center gap-2 font-sans font-semibold mb-1.5"
+                        style={{ fontSize: 13, color: "#274C77" }}
+                      >
+                        <Palette className="w-3.5 h-3.5" style={{ color: "#6096BA" }} />
+                        Theme
+                      </label>
+                      <select
+                        value={themePreference}
+                        onChange={(e) => setThemePreference(e.target.value)}
+                        disabled={!isEditing}
+                        className="w-full font-sans rounded-lg outline-none"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 14px",
+                          backgroundColor: "#F6F8F9",
+                          border: "1px solid rgba(36,76,90,0.15)",
+                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                      </select>
+                    </div>
+
+                    {/* language */}
+                    <div>
+                      <label
+                        className="flex items-center gap-2 font-sans font-semibold mb-1.5"
+                        style={{ fontSize: 13, color: "#274C77" }}
+                      >
+                        <Globe className="w-3.5 h-3.5" style={{ color: "#6096BA" }} />
+                        Language
+                      </label>
+                      <select
+                        value={languagePreference}
+                        onChange={(e) => {
+                          setLanguagePreference(e.target.value);
+                          applyLanguagePreference(e.target.value);
+                        }}
+                        disabled={!isEditing}
+                        className="w-full font-sans rounded-lg outline-none"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 14px",
+                          backgroundColor: "#F6F8F9",
+                          border: "1px solid rgba(36,76,90,0.15)",
+                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                        <option value="kz">Қазақша</option>
+                      </select>
+                    </div>
+
+                    {/* save button */}
+                    {isEditing && (
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving || isUploadingAvatar}
+                        className="w-full flex items-center justify-center gap-2 font-sans font-semibold text-white rounded-sm"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 20px",
+                          backgroundColor: isSaving ? "#274C77" : "#6096BA",
+                          opacity: isSaving || isUploadingAvatar ? 0.75 : 1,
+                          cursor: isSaving || isUploadingAvatar ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving…
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Save Profile
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* ── right column ── */}
+              <section className="col-span-8 space-y-6">
+
+                {/* ── stat cards ── */}
+                <div className="grid grid-cols-3 gap-4">
+                  {/* My Reports */}
+                  {(
+                    [
+                      {
+                        id: "reports",
+                        icon: FileText,
+                        label: "My Reports",
+                        count: stats?.reportsCount ?? null,
+                        description: "Track submitted reports and their review status.",
+                        route: "/my-reports",
+                        accentColor: "#6096BA",
+                      },
+                      {
+                        id: "notifications",
+                        icon: Bell,
+                        label: "Notifications",
+                        count: null,
+                        description: "Stay updated on report activity and alerts.",
+                        route: "/notifications",
+                        accentColor: "#F9F7F3",
+                      },
+                      {
+                        id: "achievements",
+                        icon: Trophy,
+                        label: "Achievements",
+                        count: stats?.achievementsCount ?? null,
+                        description: "Earned badges and participation milestones.",
+                        route: "/achievements",
+                        accentColor: "#e8a020",
+                      },
+                    ] as const
+                  ).map(({ id, icon: Icon, label, count, description, route, accentColor }) => (
+                    <button
+                      key={id}
+                      onClick={() => navigate(route)}
+                      onMouseEnter={() => setHoveredStat(id)}
+                      onMouseLeave={() => setHoveredStat(null)}
+                      className="text-left rounded-2xl overflow-hidden transition-all"
+                      style={{
+                        backgroundColor: "#fff",
+                        border: "1px solid rgba(136,187,214,0.10)",
+                        boxShadow: hoveredStat === id
+                          ? "0 12px 40px rgba(36,76,90,0.14)"
+                          : "0 8px 40px rgba(36,76,90,0.10)",
+                        transform: hoveredStat === id ? "translateY(-2px)" : "translateY(0)",
+                      }}
+                    >
+                      {/* accent bar */}
+                      <div style={{ height: 4, backgroundColor: accentColor }} />
+                      <div className="p-6">
+                        <div
+                          className="flex items-center justify-center rounded-xl mb-4"
+                          style={{
+                            width: 38,
+                            height: 38,
+                            backgroundColor: `${accentColor}18`,
+                          }}
+                        >
+                          <Icon className="w-5 h-5" style={{ color: accentColor }} />
+                        </div>
+                        <p
+                          className="font-sans font-semibold mb-1"
+                          style={{ fontSize: 13, color: "#274C77" }}
+                        >
+                          {label}
+                        </p>
+                        {count !== null && (
+                          <p
+                            className="font-serif mb-1"
+                            style={{
+                              fontSize: 28,
+                              letterSpacing: "-0.04em",
+                              color: accentColor,
+                              fontFamily: "DM Serif Display, serif",
+                              lineHeight: 1.1,
+                            }}
+                          >
+                            {count}
+                          </p>
+                        )}
+                        <p
+                          className="font-sans"
+                          style={{ fontSize: 12, color: "rgba(36,76,90,0.55)", lineHeight: 1.6 }}
+                        >
+                          {description}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── recent activity ── */}
+                <div
+                  className="rounded-2xl p-8"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid rgba(136,187,214,0.10)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.10)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p
+                        className="font-sans font-bold uppercase tracking-[0.20em] mb-1"
+                        style={{ fontSize: 11, color: "#6096BA" }}
+                      >
+                        Activity
+                      </p>
+                      <h2
+                        className="font-serif"
+                        style={{
+                          fontSize: 22,
+                          letterSpacing: "-0.03em",
+                          color: "#274C77",
+                          fontFamily: "DM Serif Display, serif",
+                        }}
+                      >
+                        Recent Activity
+                      </h2>
+                    </div>
+                  </div>
+
+                  {activityLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex gap-4">
+                          <Skeleton className="w-1 h-16 rounded-full flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-3 w-1/4" />
+                            <Skeleton className="h-3 w-full" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : recentActivity.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div
+                        className="flex items-center justify-center rounded-2xl mb-4"
+                        style={{ width: 52, height: 52, backgroundColor: "rgba(198,209,102,0.25)" }}
+                      >
+                        <FileText className="w-6 h-6" style={{ color: "#6096BA" }} />
+                      </div>
+                      <p
+                        className="font-sans font-semibold mb-1"
+                        style={{ fontSize: 15, color: "#274C77" }}
+                      >
+                        No activity yet
+                      </p>
+                      <p
+                        className="font-sans"
+                        style={{ fontSize: 13, color: "rgba(36,76,90,0.50)", maxWidth: 260, lineHeight: 1.65 }}
+                      >
+                        Your submitted reports, forum replies, and achievements will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentActivity.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex gap-4 rounded-xl px-5 py-4"
+                          style={{ backgroundColor: "#F6F8F9" }}
+                        >
+                          {/* colored left bar */}
+                          <div
+                            className="w-1 rounded-full flex-shrink-0 self-stretch"
+                            style={{ backgroundColor: activityAccentColor(item.type), minHeight: 40 }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="font-sans font-semibold mb-0.5"
+                              style={{ fontSize: 13, color: "#274C77" }}
                             >
                               {item.title}
-                            </div>
-                            <div className="text-xs text-gray-500 mb-2">
+                            </p>
+                            <p
+                              className="font-sans mb-1.5"
+                              style={{ fontSize: 12, color: "rgba(36,76,90,0.45)" }}
+                            >
                               {item.timestampLabel}
-                            </div>
-                            <p className="text-sm text-gray-700 leading-6">
+                            </p>
+                            <p
+                              className="font-sans"
+                              style={{ fontSize: 13, color: "rgba(36,76,90,0.65)", lineHeight: 1.65 }}
+                            >
                               {item.description}
                             </p>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── quick actions ── */}
-                  <div className="border rounded-xl p-8 bg-gray-50">
-                    <h2 className="text-2xl font-semibold mb-4">
-                      Quick Actions
-                    </h2>
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => navigate("/report")}
-                        className="bg-black text-white px-5 py-3 rounded-md hover:bg-gray-800"
-                      >
-                        Submit Report
-                      </button>
-                      <button
-                        onClick={() => navigate("/forum")}
-                        className="border px-5 py-3 rounded-md hover:bg-gray-50"
-                      >
-                        Open Forum
-                      </button>
-                      <button
-                        onClick={() => navigate("/knowledge-base")}
-                        className="border px-5 py-3 rounded-md hover:bg-gray-50"
-                      >
-                        Browse Resources
-                      </button>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                </div>
+
+                {/* ── quick actions ── */}
+                <div
+                  className="rounded-2xl px-8 py-7"
+                  style={{
+                    backgroundColor: "rgba(198,209,102,0.18)",
+                    border: "1px solid rgba(198,209,102,0.40)",
+                  }}
+                >
+                  <p
+                    className="font-sans font-bold uppercase tracking-[0.20em] mb-1"
+                    style={{ fontSize: 11, color: "#6096BA" }}
+                  >
+                    Jump to
+                  </p>
+                  <h2
+                    className="font-serif mb-5"
+                    style={{
+                      fontSize: 20,
+                      letterSpacing: "-0.03em",
+                      color: "#274C77",
+                      fontFamily: "DM Serif Display, serif",
+                    }}
+                  >
+                    Quick Actions
+                  </h2>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => navigate("/report")}
+                      onMouseEnter={() => setHoveredAction("report")}
+                      onMouseLeave={() => setHoveredAction(null)}
+                      className="inline-flex items-center gap-2 font-sans font-semibold text-white rounded-sm"
+                      style={{
+                        fontSize: 14,
+                        padding: "10px 20px",
+                        backgroundColor: hoveredAction === "report" ? "#274C77" : "#6096BA",
+                        transition: "background 0.15s",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Submit Report
+                    </button>
+
+                    {[
+                      { id: "forum", label: "Open Forum", route: "/forum" },
+                      { id: "resources", label: "Browse Resources", route: "/knowledge-base" },
+                    ].map(({ id, label, route }) => (
+                      <button
+                        key={id}
+                        onClick={() => navigate(route)}
+                        onMouseEnter={() => setHoveredAction(id)}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="inline-flex items-center gap-2 font-sans font-semibold rounded-sm"
+                        style={{
+                          fontSize: 14,
+                          padding: "10px 20px",
+                          color: "#274C77",
+                          border: "1px solid rgba(36,76,90,0.20)",
+                          backgroundColor: hoveredAction === id ? "rgba(255,255,255,0.6)" : "transparent",
+                          transition: "background 0.15s",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {label}
+                        <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+                      </button>
+                    ))}
                   </div>
-                </section>
-              </div>
-            </>
+                </div>
+
+              </section>
+            </div>
           ) : null}
         </div>
       </main>

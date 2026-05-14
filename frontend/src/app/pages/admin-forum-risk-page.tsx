@@ -45,6 +45,7 @@ function parseAttachments(description: string): { text: string; attachments: Att
 function AttachmentCard({ attachment }: { attachment: Attachment }) {
   const isImage = attachment.type.startsWith("image/");
   const sizeKb = (attachment.size / 1024).toFixed(0);
+  const [hovered, setHovered] = useState(false);
 
   const handleDownload = () => {
     const a = document.createElement("a");
@@ -55,26 +56,47 @@ function AttachmentCard({ attachment }: { attachment: Attachment }) {
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+    <div
+      className="flex items-center gap-3 p-3 rounded-xl border transition-colors"
+      style={{
+        backgroundColor: hovered ? "#F0F8FA" : "#FAFAFA",
+        borderColor: "#D6DCE1",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {isImage ? (
         <img
           src={attachment.url}
           alt={attachment.name}
-          className="w-12 h-12 rounded object-cover shrink-0 border"
+          className="w-11 h-11 rounded-lg object-cover shrink-0 border"
+          style={{ borderColor: "#D6DCE1" }}
         />
       ) : (
-        <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-          <FileText className="w-5 h-5 text-red-500" />
+        <div
+          className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 border"
+          style={{ backgroundColor: "#FEF2F2", borderColor: "#FECACA" }}
+        >
+          <FileText className="w-4 h-4" style={{ color: "#EF4444" }} />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{attachment.name}</p>
-        <p className="text-xs text-gray-500">{sizeKb} KB · {isImage ? "Image" : "Document"}</p>
+        <p className="text-sm font-medium truncate" style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}>
+          {attachment.name}
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}>
+          {sizeKb} KB · {isImage ? "Image" : "Document"}
+        </p>
       </div>
       <button
         onClick={handleDownload}
         title="Download file"
-        className="shrink-0 p-2 rounded-lg border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-500 hover:text-emerald-700 transition-colors"
+        className="shrink-0 p-2 rounded-lg border transition-colors"
+        style={{
+          borderColor: hovered ? "#6096BA" : "#D6DCE1",
+          backgroundColor: hovered ? "#E8F4F8" : "transparent",
+          color: hovered ? "#274C77" : "#274C77",
+        }}
       >
         <Download className="w-4 h-4" />
       </button>
@@ -97,35 +119,46 @@ const STATUS_FILTERS: StatusFilter[] = [
   "DISMISSED",
 ];
 
-function getRiskBadge(level: ForumRiskLevel) {
+function getRiskBadgeStyle(level: ForumRiskLevel): React.CSSProperties {
   switch (level) {
     case "CRITICAL":
-      return "bg-red-100 text-red-700 border-red-200";
+      return { backgroundColor: "#FEE2E2", color: "#B91C1C", borderColor: "#FECACA" };
     case "HIGH":
-      return "bg-orange-100 text-orange-700 border-orange-200";
+      return { backgroundColor: "#FFEDD5", color: "#C2410C", borderColor: "#FED7AA" };
     case "MODERATE":
-      return "bg-amber-100 text-amber-700 border-amber-200";
+      return { backgroundColor: "#FEF9C3", color: "#A16207", borderColor: "#FDE68A" };
     default:
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      return { backgroundColor: "#DBEAFE", color: "#1D4ED8", borderColor: "#BFDBFE" };
   }
 }
 
-function getStatusBadge(status: ForumModerationStatus) {
+function getStatusBadgeStyle(status: ForumModerationStatus): React.CSSProperties {
   switch (status) {
     case "FLAGGED":
-      return "bg-red-100 text-red-700 border-red-200";
+      return { backgroundColor: "#FEE2E2", color: "#B91C1C", borderColor: "#FECACA" };
     case "ANALYSIS_FAILED":
-      return "bg-rose-100 text-rose-700 border-rose-200";
+      return { backgroundColor: "#FFE4E6", color: "#BE123C", borderColor: "#FECDD3" };
     case "PENDING_ANALYSIS":
-      return "bg-amber-100 text-amber-700 border-amber-200";
+      return { backgroundColor: "#FEF9C3", color: "#A16207", borderColor: "#FDE68A" };
     case "REVIEWED":
-      return "bg-sky-100 text-sky-700 border-sky-200";
+      return { backgroundColor: "#E0F2FE", color: "#0369A1", borderColor: "#BAE6FD" };
     case "ESCALATED_TO_SPECIALIST":
-      return "bg-purple-100 text-purple-700 border-purple-200";
+      return { backgroundColor: "#F3E8FF", color: "#7E22CE", borderColor: "#E9D5FF" };
     case "DISMISSED":
-      return "bg-slate-100 text-slate-700 border-slate-200";
+      return { backgroundColor: "#F1F5F9", color: "#475569", borderColor: "#E2E8F0" };
     default:
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      return { backgroundColor: "#D1FAE5", color: "#065F46", borderColor: "#A7F3D0" };
+  }
+}
+
+function getReportStatusBadgeStyle(status: ReportModerationQueueItemResponse["reportStatus"]): React.CSSProperties {
+  switch (status) {
+    case "RESOLVED":
+      return { backgroundColor: "#D1FAE5", color: "#065F46", borderColor: "#A7F3D0" };
+    case "UNDER_REVIEW":
+      return { backgroundColor: "#FEF9C3", color: "#A16207", borderColor: "#FDE68A" };
+    default:
+      return { backgroundColor: "#E0F2FE", color: "#0369A1", borderColor: "#BAE6FD" };
   }
 }
 
@@ -162,17 +195,6 @@ function getFailureHint(status: ForumModerationStatus) {
   return "This item is visible for moderator review, but it is not currently flagged for urgent action.";
 }
 
-function getReportStatusBadge(status: ReportModerationQueueItemResponse["reportStatus"]) {
-  switch (status) {
-    case "RESOLVED":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "UNDER_REVIEW":
-      return "bg-amber-100 text-amber-700 border-amber-200";
-    default:
-      return "bg-sky-100 text-sky-700 border-sky-200";
-  }
-}
-
 function formatReportStatusLabel(status: ReportModerationQueueItemResponse["reportStatus"]) {
   return status
     .toLowerCase()
@@ -186,13 +208,70 @@ function getSummaryText(
   status: ForumModerationStatus,
   notes: string | null
 ) {
-  if (summary && summary.trim()) {
-    return summary;
-  }
-  if (notes && notes.trim()) {
-    return notes;
-  }
+  if (summary && summary.trim()) return summary;
+  if (notes && notes.trim()) return notes;
   return getFailureHint(status);
+}
+
+// ── Badge component ────────────────────────────────────────────────────────────
+
+function Badge({ style, children }: { style: React.CSSProperties; children: React.ReactNode }) {
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-semibold tracking-wide"
+      style={{ fontFamily: "DM Sans, sans-serif", ...style }}
+    >
+      {children}
+    </span>
+  );
+}
+
+// ── Loading skeleton ───────────────────────────────────────────────────────────
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-lg ${className}`}
+      style={{ backgroundColor: "rgba(36,76,90,0.07)" }}
+    />
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="rounded-2xl border p-6"
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+        >
+          <div className="flex items-start justify-between gap-6 mb-5">
+            <div className="flex-1 space-y-3">
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <Skeleton className="h-7 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+            <Skeleton className="h-9 w-28 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-12 gap-6">
+            <div className="col-span-8 space-y-3">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+            <div className="col-span-4 space-y-3">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function AdminForumRiskPage() {
@@ -255,7 +334,6 @@ export function AdminForumRiskPage() {
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-
     return activeItems.filter((item) => {
       const matchesStatus = statusFilter === "ALL" || item.moderationStatus === statusFilter;
       const textBlob = view === "REPORTS"
@@ -277,7 +355,6 @@ export function AdminForumRiskPage() {
             item.riskSummary ?? "",
             item.moderationNotes ?? "",
           ].join(" ");
-
       return matchesStatus && textBlob.toLowerCase().includes(q);
     });
   }, [activeItems, query, statusFilter, view]);
@@ -324,7 +401,6 @@ export function AdminForumRiskPage() {
       alert("Enter a specialist response before submitting.");
       return;
     }
-
     const actionKey = `report-response-${reportId}`;
     try {
       setActionLoading(actionKey);
@@ -353,39 +429,66 @@ export function AdminForumRiskPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#F9F7F3", fontFamily: "DM Sans, sans-serif", color: "#274C77" }}
+    >
       <Header />
 
+      {/* ── Identity Reveal Modal ─────────────────────────────────────────────── */}
       {pendingRevealReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-600">
-              Confirm identity reveal
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(36,76,90,0.45)" }}>
+          <div
+            className="w-full max-w-xl rounded-2xl p-8 shadow-2xl"
+            style={{ backgroundColor: "#FFFFFF", border: "1px solid #D6DCE1" }}
+          >
+            <p
+              className="text-[11px] font-bold uppercase tracking-[0.22em] mb-3"
+              style={{ color: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
+            >
+              Sensitive action · Confirm identity reveal
             </p>
-            <h2 className="mt-3 text-2xl font-semibold text-gray-900">
+            <h2
+              className="text-2xl leading-tight tracking-[-0.03em] mb-3"
+              style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+            >
               Reveal anonymous reporter identity?
             </h2>
-            <p className="mt-3 text-sm leading-6 text-gray-600">
-              This action exposes the reporter email for case {pendingRevealReport.reference}.
-              Only continue if identity access is necessary for specialist intervention on an
-              escalated safety case.
+            <p
+              className="text-sm leading-[1.75] mb-5"
+              style={{ color: "#274C77", opacity: 0.65, fontFamily: "DM Sans, sans-serif" }}
+            >
+              This action exposes the reporter email for case{" "}
+              <span className="font-semibold" style={{ opacity: 1, color: "#274C77" }}>
+                {pendingRevealReport.reference}
+              </span>
+              . Only continue if identity access is necessary for specialist intervention on an escalated safety case.
             </p>
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              This action is sensitive and should only be used when anonymous handling is no
-              longer sufficient for protecting the user.
+            <div
+              className="rounded-xl p-4 text-sm leading-[1.7] mb-6"
+              style={{ backgroundColor: "#FEF2F2", borderColor: "#FECACA", border: "1px solid #FECACA", color: "#B91C1C", fontFamily: "DM Sans, sans-serif" }}
+            >
+              This action is sensitive and should only be used when anonymous handling is no longer sufficient for protecting the user.
             </div>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setPendingRevealReport(null)}
                 disabled={actionLoading === `report-reveal-${pendingRevealReport.id}`}
-                className="rounded-lg border px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-sm px-5 py-2.5 text-sm font-semibold border transition-colors disabled:opacity-50"
+                style={{
+                  borderColor: "rgba(36,76,90,0.2)",
+                  color: "#274C77",
+                  backgroundColor: "transparent",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => runRevealIdentity(pendingRevealReport.id)}
                 disabled={actionLoading === `report-reveal-${pendingRevealReport.id}`}
-                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
               >
                 Confirm Reveal
               </button>
@@ -394,144 +497,293 @@ export function AdminForumRiskPage() {
         </div>
       )}
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10 flex items-end justify-between gap-6">
-            <div>
-              <h1 className="text-5xl font-bold mb-3">Moderation Queue</h1>
-              <p className="text-lg text-gray-600 max-w-3xl">
-                {queueMode === "SPECIALIST"
-                  ? "Focus on cases already escalated to specialists and send a direct response back through the report timeline."
-                  : "Review AI analysis for anonymous reports and forum posts, prioritize high-risk cases, and escalate urgent situations to specialists."}
-              </p>
-            </div>
-
-            {isAdmin && (
-              <button
-                onClick={() => navigate("/admin/analytics")}
-                className="border px-4 py-3 rounded-lg text-sm hover:bg-gray-50 inline-flex items-center gap-2"
-              >
-                View Analytics
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            )}
+      {/* ── Hero strip ───────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden border-b" style={{ backgroundColor: "#A3CEF1", borderColor: "rgba(36,76,90,0.12)" }}>
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#274C77 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 py-10 flex items-end justify-between gap-6">
+          <div>
+            <p
+              className="text-[11px] font-bold uppercase tracking-[0.22em] mb-3"
+              style={{ color: "#274C77", opacity: 0.6, fontFamily: "DM Sans, sans-serif" }}
+            >
+              Admin · Moderation
+            </p>
+            <h1
+              className="text-[38px] sm:text-[48px] leading-[1.05] tracking-[-0.04em]"
+              style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+            >
+              {queueMode === "SPECIALIST" ? "Specialist Queue" : "Moderation Queue"}
+            </h1>
+            <p
+              className="mt-2 text-[15px] leading-[1.7] max-w-2xl"
+              style={{ color: "#274C77", opacity: 0.65, fontFamily: "DM Sans, sans-serif" }}
+            >
+              {queueMode === "SPECIALIST"
+                ? "Focus on cases already escalated to specialists and send a direct response back through the report timeline."
+                : "Review AI analysis for anonymous reports and forum posts, prioritize high-risk cases, and escalate urgent situations to specialists."}
+            </p>
           </div>
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/admin/analytics")}
+              className="inline-flex items-center gap-2 rounded-sm border px-5 py-3 text-sm font-semibold transition-colors shrink-0"
+              style={{
+                borderColor: "rgba(36,76,90,0.25)",
+                color: "#274C77",
+                backgroundColor: "rgba(255,255,255,0.45)",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              View Analytics
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 py-10">
+
+          {/* ── Queue mode tabs ───────────────────────────────────────────────── */}
           {canUseSpecialistQueue && (
-            <div className="flex gap-3 mb-6">
-              <button
-                onClick={() => setQueueMode("MODERATOR")}
-                className={`px-5 py-3 rounded-xl border text-sm font-medium ${
-                  queueMode === "MODERATOR"
-                    ? "bg-black text-white border-black"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                Moderator Queue
-              </button>
-              <button
-                onClick={() => setQueueMode("SPECIALIST")}
-                className={`px-5 py-3 rounded-xl border text-sm font-medium ${
-                  queueMode === "SPECIALIST"
-                    ? "bg-black text-white border-black"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                Escalated Cases
-              </button>
+            <div
+              className="inline-flex rounded-xl p-1 gap-1 mb-7 border"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              {(["MODERATOR", "SPECIALIST"] as QueueMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setQueueMode(mode)}
+                  className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    backgroundColor: queueMode === mode ? "#274C77" : "transparent",
+                    color: queueMode === mode ? "#F9F7F3" : "#274C77",
+                    opacity: queueMode !== mode ? 0.65 : 1,
+                  }}
+                >
+                  {mode === "MODERATOR" ? "Moderator Queue" : "Escalated Cases"}
+                </button>
+              ))}
             </div>
           )}
 
-          <div className="flex gap-3 mb-8">
-            <button
-              onClick={() => setView("REPORTS")}
-              className={`px-5 py-3 rounded-xl border text-sm font-medium ${
-                view === "REPORTS" ? "bg-black text-white border-black" : "border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              Anonymous Reports
-            </button>
-            <button
-              onClick={() => setView("FORUM")}
-              className={`px-5 py-3 rounded-xl border text-sm font-medium ${
-                view === "FORUM" ? "bg-black text-white border-black" : "border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              Forum Posts
-            </button>
+          {/* ── View tabs (Reports / Forum) ───────────────────────────────────── */}
+          <div
+            className="inline-flex rounded-xl p-1 gap-1 mb-8 border"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+          >
+            {(["REPORTS", "FORUM"] as ModerationView[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={{
+                  fontFamily: "DM Sans, sans-serif",
+                  backgroundColor: view === v ? "#6096BA" : "transparent",
+                  color: view === v ? "#FFFFFF" : "#274C77",
+                  opacity: view !== v ? 0.65 : 1,
+                }}
+              >
+                {v === "REPORTS" ? "Anonymous Reports" : "Forum Posts"}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-6 mb-8">
-            <div className="border rounded-xl p-6 bg-red-50 border-red-100">
-              <AlertTriangle className="w-6 h-6 text-red-600 mb-4" />
-              <p className="text-sm text-red-700">Critical cases</p>
-              <p className="text-3xl font-bold text-red-800 mt-1">{criticalCount}</p>
+          {/* ── Summary cards ─────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div
+              className="rounded-2xl border p-6"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "#FEE2E2" }}
+              >
+                <AlertTriangle className="w-4 h-4" style={{ color: "#DC2626" }} />
+              </div>
+              <p
+                className="text-[13px] font-semibold mb-1"
+                style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+              >
+                Critical cases
+              </p>
+              <p
+                className="text-[32px] leading-none tracking-[-0.03em]"
+                style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+              >
+                {criticalCount}
+              </p>
             </div>
 
-            <div className="border rounded-xl p-6 bg-orange-50 border-orange-100">
-              <ShieldAlert className="w-6 h-6 text-orange-600 mb-4" />
-              <p className="text-sm text-orange-700">Flagged items</p>
-              <p className="text-3xl font-bold text-orange-800 mt-1">{flaggedCount}</p>
+            <div
+              className="rounded-2xl border p-6"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "#FEF9C3" }}
+              >
+                <ShieldAlert className="w-4 h-4" style={{ color: "#CA8A04" }} />
+              </div>
+              <p
+                className="text-[13px] font-semibold mb-1"
+                style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+              >
+                Flagged items
+              </p>
+              <p
+                className="text-[32px] leading-none tracking-[-0.03em]"
+                style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+              >
+                {flaggedCount}
+              </p>
             </div>
 
-            <div className="border rounded-xl p-6 bg-sky-50 border-sky-100">
-              <Brain className="w-6 h-6 text-sky-600 mb-4" />
-              <p className="text-sm text-sky-700">Analysis failures</p>
-              <p className="text-3xl font-bold text-sky-800 mt-1">{failedCount}</p>
+            <div
+              className="rounded-2xl border p-6"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: "#DBEAFE" }}
+              >
+                <Brain className="w-4 h-4" style={{ color: "#2563EB" }} />
+              </div>
+              <p
+                className="text-[13px] font-semibold mb-1"
+                style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+              >
+                Analysis failures
+              </p>
+              <p
+                className="text-[32px] leading-none tracking-[-0.03em]"
+                style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+              >
+                {failedCount}
+              </p>
             </div>
           </div>
 
+          {/* ── Status filter chips ───────────────────────────────────────────── */}
           {queueMode === "MODERATOR" ? (
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-5">
               {STATUS_FILTERS.map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-full text-sm border ${
-                    statusFilter === status
-                      ? "bg-black text-white border-black"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
+                  className="px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-colors"
+                  style={{
+                    fontFamily: "DM Sans, sans-serif",
+                    backgroundColor: statusFilter === status ? "#274C77" : "#FFFFFF",
+                    color: statusFilter === status ? "#F9F7F3" : "#274C77",
+                    borderColor: statusFilter === status ? "#274C77" : "#D6DCE1",
+                    opacity: statusFilter !== status ? 0.7 : 1,
+                  }}
                 >
                   {status === "ALL" ? "All Items" : formatStatusLabel(status)}
                 </button>
               ))}
             </div>
           ) : (
-            <div className="mb-6 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-800">
-              Showing only items with status {formatStatusLabel("ESCALATED_TO_SPECIALIST")}.
+            <div
+              className="mb-5 rounded-xl px-5 py-3 text-sm border"
+              style={{
+                backgroundColor: "#F3E8FF",
+                borderColor: "#E9D5FF",
+                color: "#7E22CE",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              Showing only items with status <span className="font-semibold">{formatStatusLabel("ESCALATED_TO_SPECIALIST")}</span>.
             </div>
           )}
 
-          <div className="flex items-center gap-3 border px-4 py-3 rounded-xl mb-6">
-            <Search className="w-4 h-4 text-gray-400" />
+          {/* ── Search bar ───────────────────────────────────────────────────── */}
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border mb-7"
+            style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+          >
+            <Search className="w-4 h-4 shrink-0" style={{ color: "#274C77", opacity: 0.4 }} />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={view === "REPORTS"
-                ? queueMode === "SPECIALIST"
-                  ? "Search escalated reports by reference, title, description, reporter, or specialist notes"
-                  : "Search reports by reference, title, description, reporter, or analysis summary"
-                : queueMode === "SPECIALIST"
+              placeholder={
+                view === "REPORTS"
+                  ? queueMode === "SPECIALIST"
+                    ? "Search escalated reports by reference, title, description, reporter, or specialist notes"
+                    : "Search reports by reference, title, description, reporter, or analysis summary"
+                  : queueMode === "SPECIALIST"
                   ? "Search escalated forum posts by title, content, author, or analysis summary"
-                  : "Search forum posts by title, content, author, or analysis summary"}
-              className="w-full outline-none text-sm"
+                  : "Search forum posts by title, content, author, or analysis summary"
+              }
+              className="w-full outline-none bg-transparent text-sm"
+              style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
             />
           </div>
 
+          {/* ── Content states ────────────────────────────────────────────────── */}
           {loading ? (
-            <div className="border rounded-xl p-10 text-center text-gray-500 text-sm">
-              Loading moderation items...
-            </div>
+            <LoadingSkeleton />
           ) : error ? (
-            <div className="border rounded-xl p-10 text-center">
-              <p className="text-red-600 font-medium">{error}</p>
+            <div
+              className="rounded-2xl border p-14 text-center"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: "#FEE2E2" }}
+              >
+                <AlertTriangle className="w-5 h-5" style={{ color: "#DC2626" }} />
+              </div>
+              <h3
+                className="text-[20px] tracking-[-0.03em] mb-2"
+                style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+              >
+                Failed to load queue
+              </h3>
+              <p
+                className="text-sm mb-5"
+                style={{ color: "#274C77", opacity: 0.6, fontFamily: "DM Sans, sans-serif" }}
+              >
+                {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-sm px-5 py-2.5 text-sm font-semibold text-white"
+                style={{ backgroundColor: "#6096BA", fontFamily: "DM Sans, sans-serif" }}
+              >
+                Retry
+              </button>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="border rounded-xl p-10 text-center">
-              <h2 className="text-2xl font-semibold mb-2">No items match this moderation view</h2>
-              <p className="text-sm text-gray-600">
+            <div
+              className="rounded-2xl border p-14 text-center"
+              style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+            >
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: "#E8F4F8" }}
+              >
+                <ShieldAlert className="w-5 h-5" style={{ color: "#6096BA" }} />
+              </div>
+              <h3
+                className="text-[22px] tracking-[-0.03em] mb-2"
+                style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+              >
+                No items match this view
+              </h3>
+              <p
+                className="text-sm max-w-md mx-auto"
+                style={{ color: "#274C77", opacity: 0.6, fontFamily: "DM Sans, sans-serif" }}
+              >
                 {queueMode === "SPECIALIST"
                   ? "No escalated cases match this view right now."
                   : "Try a different filter, or wait for MentalBERT analysis to complete after submission."}
@@ -539,6 +791,8 @@ export function AdminForumRiskPage() {
             </div>
           ) : (
             <div className="space-y-5">
+
+              {/* ── REPORTS ──────────────────────────────────────────────────── */}
               {view === "REPORTS" &&
                 filteredItems.map((item) => {
                   const report = item as ReportModerationQueueItemResponse;
@@ -549,53 +803,96 @@ export function AdminForumRiskPage() {
                     report.anonymous &&
                     !report.identityRevealed &&
                     report.moderationStatus === "ESCALATED_TO_SPECIALIST";
+
                   return (
-                    <article key={report.id} className="border rounded-2xl p-6">
-                      <div className="flex items-start justify-between gap-6 mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <span className={`text-xs px-3 py-1 rounded-full border ${getRiskBadge(report.riskLevel)}`}>
+                    <article
+                      key={report.id}
+                      className="rounded-2xl border p-6"
+                      style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+                    >
+                      {/* Card header */}
+                      <div className="flex items-start justify-between gap-6 mb-5">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <Badge style={getRiskBadgeStyle(report.riskLevel)}>
                               {formatRiskLabel(report.riskLevel)} risk
-                            </span>
-                            <span className={`text-xs px-3 py-1 rounded-full border ${getStatusBadge(report.moderationStatus)}`}>
+                            </Badge>
+                            <Badge style={getStatusBadgeStyle(report.moderationStatus)}>
                               {formatStatusLabel(report.moderationStatus)}
-                            </span>
-                            <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+                            </Badge>
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide border"
+                              style={{
+                                backgroundColor: "#F1F5F9",
+                                color: "#475569",
+                                borderColor: "#E2E8F0",
+                                fontFamily: "DM Sans, sans-serif",
+                              }}
+                            >
                               {report.reference}
                             </span>
-                            <span className="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide border"
+                              style={{
+                                backgroundColor: "#F8FAFC",
+                                color: "#64748B",
+                                borderColor: "#E2E8F0",
+                                fontFamily: "DM Sans, sans-serif",
+                              }}
+                            >
                               {report.category.replaceAll("_", " ")}
                             </span>
                           </div>
-
-                          <h2 className="text-2xl font-semibold text-gray-900">{report.title}</h2>
-                          <p className="text-sm text-gray-500 mt-2">
-                            Created {formatDateTime(report.createdAt)} | analyzed {formatDateTime(report.analyzedAt)}
+                          <h2
+                            className="text-[22px] leading-tight tracking-[-0.03em] mb-1"
+                            style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                          >
+                            {report.title}
+                          </h2>
+                          <p
+                            className="text-[13px]"
+                            style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                          >
+                            Created {formatDateTime(report.createdAt)} · analyzed {formatDateTime(report.analyzedAt)}
                           </p>
                         </div>
-
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Report status</p>
-                          <span className={`inline-flex text-xs px-3 py-1 rounded-full border mt-2 ${getReportStatusBadge(report.reportStatus)}`}>
+                        <div className="text-right shrink-0">
+                          <p
+                            className="text-[12px] font-semibold mb-2"
+                            style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                          >
+                            Report status
+                          </p>
+                          <Badge style={getReportStatusBadgeStyle(report.reportStatus)}>
                             {formatReportStatusLabel(report.reportStatus)}
-                          </span>
+                          </Badge>
                         </div>
                       </div>
 
+                      {/* Card body */}
                       <div className="grid grid-cols-12 gap-6">
-                        <div className="col-span-8">
+                        <div className="col-span-12 lg:col-span-8 space-y-4">
                           {(() => {
                             const { text: descText, attachments } = parseAttachments(report.description);
                             return (
                               <>
-                                <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
-                                  <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap">
+                                <div
+                                  className="rounded-xl p-4 border"
+                                  style={{ backgroundColor: "#F8FAFB", borderColor: "#D6DCE1" }}
+                                >
+                                  <p
+                                    className="text-sm leading-[1.8] whitespace-pre-wrap"
+                                    style={{ color: "#274C77", opacity: 0.75, fontFamily: "DM Sans, sans-serif" }}
+                                  >
                                     {descText}
                                   </p>
                                 </div>
                                 {attachments.length > 0 && (
-                                  <div className="mt-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                                  <div>
+                                    <p
+                                      className="text-[11px] font-bold uppercase tracking-[0.18em] mb-2"
+                                      style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                                    >
                                       Attachments ({attachments.length})
                                     </p>
                                     <div className="space-y-2">
@@ -609,40 +906,76 @@ export function AdminForumRiskPage() {
                             );
                           })()}
 
-                          <div className="mt-4 rounded-xl bg-red-50 border border-red-100 p-4">
-                            <p className="text-xs uppercase tracking-wide text-red-700 font-semibold mb-2">
+                          {/* AI Analysis */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }}
+                          >
+                            <p
+                              className="text-[11px] font-bold uppercase tracking-[0.18em] mb-2"
+                              style={{ color: "#92400E", fontFamily: "DM Sans, sans-serif" }}
+                            >
                               AI Analysis Summary
                             </p>
-                            <p className="text-sm text-red-900">
+                            <p
+                              className="text-sm leading-[1.75]"
+                              style={{ color: "#78350F", fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {getSummaryText(report.riskSummary, report.moderationStatus, report.moderationNotes)}
                             </p>
                             {report.moderationNotes && (
-                              <p className="text-sm text-red-800 mt-3">{report.moderationNotes}</p>
+                              <p
+                                className="text-sm leading-[1.75] mt-3 pt-3 border-t"
+                                style={{ color: "#92400E", borderColor: "#FDE68A", fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                {report.moderationNotes}
+                              </p>
                             )}
                           </div>
                         </div>
 
-                        <div className="col-span-4 space-y-4">
-                          <div className="border rounded-xl p-4">
+                        <div className="col-span-12 lg:col-span-4 space-y-4">
+                          {/* Reporter card */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FAFAFA", borderColor: "#D6DCE1" }}
+                          >
                             <div className="flex items-center gap-2 mb-3">
-                              <UserRound className="w-4 h-4 text-gray-500" />
-                              <h3 className="font-semibold">Reporter</h3>
+                              <UserRound className="w-4 h-4" style={{ color: "#274C77", opacity: 0.5 }} />
+                              <h3
+                                className="text-[13px] font-semibold"
+                                style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                Reporter
+                              </h3>
                             </div>
-                            <p className="text-sm font-medium text-gray-900">
+                            <p
+                              className="text-sm font-semibold mb-1"
+                              style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {report.reporterEmail ?? "Identity hidden"}
                             </p>
-                            <p className="text-xs text-gray-500 mt-3">
+                            <p
+                              className="text-[12px] leading-[1.6]"
+                              style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {report.anonymous
                                 ? report.identityRevealed
-                                  ? "The anonymous reporter was revealed to a specialist for this escalated case."
-                                  : "This report stays anonymous unless a specialist reveals it during escalated review."
-                                : "Reporter identity is visible in the moderation workflow"}
+                                  ? "Anonymous reporter revealed to specialist for this escalated case."
+                                  : "Stays anonymous unless a specialist reveals identity during escalated review."
+                                : "Reporter identity is visible in the moderation workflow."}
                             </p>
                             {canRevealIdentity && (
                               <button
                                 onClick={() => setPendingRevealReport(report)}
                                 disabled={actionLoading === revealActionKey}
-                                className="mt-4 w-full border border-purple-200 bg-purple-50 text-purple-700 py-2.5 rounded-lg text-sm hover:bg-purple-100 disabled:opacity-50"
+                                className="mt-4 w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+                                style={{
+                                  backgroundColor: "#F3E8FF",
+                                  borderColor: "#E9D5FF",
+                                  color: "#7E22CE",
+                                  fontFamily: "DM Sans, sans-serif",
+                                }}
                               >
                                 Reveal Identity to Specialist
                               </button>
@@ -651,59 +984,104 @@ export function AdminForumRiskPage() {
                               report.anonymous &&
                               report.moderationStatus === "ESCALATED_TO_SPECIALIST" &&
                               !report.identityRevealed && (
-                                <p className="text-xs text-gray-500 mt-3">
+                                <p
+                                  className="text-[12px] mt-3"
+                                  style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                                >
                                   Only specialists can reveal anonymous identity at this stage.
                                 </p>
                               )}
                           </div>
 
-                          <div className="border rounded-xl p-4">
-                            <p className="text-sm text-gray-500">Risk metrics</p>
-                            <p className="text-2xl font-bold mt-1">{report.riskScore}/100</p>
-                            <p className="text-sm text-gray-600 mt-2">
+                          {/* Risk metrics card */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FAFAFA", borderColor: "#D6DCE1" }}
+                          >
+                            <p
+                              className="text-[12px] font-semibold mb-2"
+                              style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                            >
+                              Risk metrics
+                            </p>
+                            <p
+                              className="text-[30px] leading-none tracking-[-0.03em] mb-1"
+                              style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                            >
+                              {report.riskScore}
+                              <span
+                                className="text-[18px] ml-1"
+                                style={{ opacity: 0.4, fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                /100
+                              </span>
+                            </p>
+                            <p
+                              className="text-sm"
+                              style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+                            >
                               Sentiment {report.sentimentScore.toFixed(2)}
                             </p>
                           </div>
 
-                          <div className="grid gap-2">
+                          {/* Moderation actions */}
+                          <div className="space-y-2">
                             {report.flaggedForReview && isAdmin ? (
                               <>
                                 <button
                                   onClick={() => runReportAction(report.id, escalateFlaggedReport)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full bg-red-600 text-white py-2.5 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                                  style={{ backgroundColor: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
                                 >
                                   Escalate to Specialist
                                 </button>
                                 <button
                                   onClick={() => runReportAction(report.id, reviewFlaggedReport)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full border py-2.5 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: "transparent",
+                                    borderColor: "#D6DCE1",
+                                    color: "#274C77",
+                                    fontFamily: "DM Sans, sans-serif",
+                                  }}
                                 >
                                   Mark Reviewed
                                 </button>
                                 <button
                                   onClick={() => runReportAction(report.id, dismissFlaggedReport)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full border py-2.5 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: "transparent",
+                                    borderColor: "#D6DCE1",
+                                    color: "#274C77",
+                                    fontFamily: "DM Sans, sans-serif",
+                                  }}
                                 >
                                   Dismiss Flag
                                 </button>
                               </>
                             ) : report.moderationStatus === "ESCALATED_TO_SPECIALIST" ? (
-                              <div className="grid gap-2">
+                              <div className="space-y-2">
                                 {report.reportStatus === "RESOLVED" && (
-                                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
-                                    Specialist response sent. The reporter has been notified and the case is now marked resolved.
+                                  <div
+                                    className="rounded-xl p-3 text-sm border"
+                                    style={{
+                                      backgroundColor: "#D1FAE5",
+                                      borderColor: "#A7F3D0",
+                                      color: "#065F46",
+                                      fontFamily: "DM Sans, sans-serif",
+                                    }}
+                                  >
+                                    Specialist response sent. The reporter has been notified and the case is marked resolved.
                                   </div>
                                 )}
                                 <textarea
                                   value={responseDrafts[report.id] ?? ""}
                                   onChange={(e) =>
-                                    setResponseDrafts((prev) => ({
-                                      ...prev,
-                                      [report.id]: e.target.value,
-                                    }))
+                                    setResponseDrafts((prev) => ({ ...prev, [report.id]: e.target.value }))
                                   }
                                   rows={4}
                                   placeholder={
@@ -712,12 +1090,19 @@ export function AdminForumRiskPage() {
                                       : "Add a specialist response that will appear in the report timeline."
                                   }
                                   disabled={actionLoading === `report-response-${report.id}`}
-                                  className="w-full border rounded-lg px-3 py-2 text-sm outline-none resize-none"
+                                  className="w-full rounded-xl px-4 py-3 text-sm outline-none resize-none border"
+                                  style={{
+                                    backgroundColor: "#F8FAFB",
+                                    borderColor: "#D6DCE1",
+                                    color: "#274C77",
+                                    fontFamily: "DM Sans, sans-serif",
+                                  }}
                                 />
                                 <button
                                   onClick={() => runSpecialistResponse(report.id)}
                                   disabled={actionLoading === `report-response-${report.id}`}
-                                  className="w-full bg-purple-600 text-white py-2.5 rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                                  style={{ backgroundColor: "#6096BA", fontFamily: "DM Sans, sans-serif" }}
                                 >
                                   {report.reportStatus === "RESOLVED"
                                     ? "Send Follow-up Response"
@@ -725,7 +1110,16 @@ export function AdminForumRiskPage() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-gray-600">
+                              <div
+                                className="rounded-xl p-3 text-sm border"
+                                style={{
+                                  backgroundColor: "#F8FAFB",
+                                  borderColor: "#D6DCE1",
+                                  color: "#274C77",
+                                  opacity: 0.7,
+                                  fontFamily: "DM Sans, sans-serif",
+                                }}
+                              >
                                 {getFailureHint(report.moderationStatus)}
                               </div>
                             )}
@@ -736,114 +1130,239 @@ export function AdminForumRiskPage() {
                   );
                 })}
 
+              {/* ── FORUM POSTS ───────────────────────────────────────────────── */}
               {view === "FORUM" &&
                 filteredItems.map((item) => {
                   const post = item as ForumModerationQueueItemResponse;
                   const actionKey = `forum-${post.id}`;
+
                   return (
-                    <article key={post.id} className="border rounded-2xl p-6">
-                      <div className="flex items-start justify-between gap-6 mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <span className={`text-xs px-3 py-1 rounded-full border ${getRiskBadge(post.riskLevel)}`}>
+                    <article
+                      key={post.id}
+                      className="rounded-2xl border p-6"
+                      style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+                    >
+                      {/* Card header */}
+                      <div className="flex items-start justify-between gap-6 mb-5">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <Badge style={getRiskBadgeStyle(post.riskLevel)}>
                               {formatRiskLabel(post.riskLevel)} risk
-                            </span>
-                            <span className={`text-xs px-3 py-1 rounded-full border ${getStatusBadge(post.moderationStatus)}`}>
+                            </Badge>
+                            <Badge style={getStatusBadgeStyle(post.moderationStatus)}>
                               {formatStatusLabel(post.moderationStatus)}
-                            </span>
-                            <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+                            </Badge>
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide border"
+                              style={{
+                                backgroundColor: "#F1F5F9",
+                                color: "#475569",
+                                borderColor: "#E2E8F0",
+                                fontFamily: "DM Sans, sans-serif",
+                              }}
+                            >
                               Score {post.riskScore}/100
                             </span>
-                            <span className="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide border"
+                              style={{
+                                backgroundColor: "#F8FAFC",
+                                color: "#64748B",
+                                borderColor: "#E2E8F0",
+                                fontFamily: "DM Sans, sans-serif",
+                              }}
+                            >
                               {post.category.replaceAll("_", " ")}
                             </span>
                           </div>
-
-                          <h2 className="text-2xl font-semibold text-gray-900">{post.title}</h2>
-                          <p className="text-sm text-gray-500 mt-2">
-                            Created {formatDateTime(post.createdAt)} | analyzed {formatDateTime(post.analyzedAt)}
+                          <h2
+                            className="text-[22px] leading-tight tracking-[-0.03em] mb-1"
+                            style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                          >
+                            {post.title}
+                          </h2>
+                          <p
+                            className="text-[13px]"
+                            style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                          >
+                            Created {formatDateTime(post.createdAt)} · analyzed {formatDateTime(post.analyzedAt)}
                           </p>
                         </div>
-
                         <button
                           onClick={() => navigate(`/forum/${post.id}`)}
-                          className="border px-3 py-2 rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap"
+                          className="rounded-sm border px-4 py-2 text-sm font-semibold transition-colors shrink-0"
+                          style={{
+                            borderColor: "#D6DCE1",
+                            color: "#274C77",
+                            backgroundColor: "transparent",
+                            fontFamily: "DM Sans, sans-serif",
+                          }}
                         >
                           Open Post
                         </button>
                       </div>
 
+                      {/* Card body */}
                       <div className="grid grid-cols-12 gap-6">
-                        <div className="col-span-8">
-                          <div className="rounded-xl bg-gray-50 p-4 border border-gray-100">
-                            <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap">
+                        <div className="col-span-12 lg:col-span-8 space-y-4">
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#F8FAFB", borderColor: "#D6DCE1" }}
+                          >
+                            <p
+                              className="text-sm leading-[1.8] whitespace-pre-wrap"
+                              style={{ color: "#274C77", opacity: 0.75, fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {post.content}
                             </p>
                           </div>
 
-                          <div className="mt-4 rounded-xl bg-red-50 border border-red-100 p-4">
-                            <p className="text-xs uppercase tracking-wide text-red-700 font-semibold mb-2">
+                          {/* AI Analysis */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }}
+                          >
+                            <p
+                              className="text-[11px] font-bold uppercase tracking-[0.18em] mb-2"
+                              style={{ color: "#92400E", fontFamily: "DM Sans, sans-serif" }}
+                            >
                               AI Analysis Summary
                             </p>
-                            <p className="text-sm text-red-900">
+                            <p
+                              className="text-sm leading-[1.75]"
+                              style={{ color: "#78350F", fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {getSummaryText(post.riskSummary, post.moderationStatus, post.moderationNotes)}
                             </p>
                             {post.moderationNotes && (
-                              <p className="text-sm text-red-800 mt-3">{post.moderationNotes}</p>
+                              <p
+                                className="text-sm leading-[1.75] mt-3 pt-3 border-t"
+                                style={{ color: "#92400E", borderColor: "#FDE68A", fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                {post.moderationNotes}
+                              </p>
                             )}
                           </div>
                         </div>
 
-                        <div className="col-span-4 space-y-4">
-                          <div className="border rounded-xl p-4">
+                        <div className="col-span-12 lg:col-span-4 space-y-4">
+                          {/* Author card */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FAFAFA", borderColor: "#D6DCE1" }}
+                          >
                             <div className="flex items-center gap-2 mb-3">
-                              <UserRound className="w-4 h-4 text-gray-500" />
-                              <h3 className="font-semibold">Author</h3>
+                              <UserRound className="w-4 h-4" style={{ color: "#274C77", opacity: 0.5 }} />
+                              <h3
+                                className="text-[13px] font-semibold"
+                                style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                Author
+                              </h3>
                             </div>
-                            <p className="text-sm font-medium text-gray-900">{post.authorNickname}</p>
-                            <p className="text-sm text-gray-600 mt-1">{post.authorEmail}</p>
-                            <p className="text-xs text-gray-500 mt-3">
+                            <p
+                              className="text-sm font-semibold mb-0.5"
+                              style={{ color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+                            >
+                              {post.authorNickname}
+                            </p>
+                            <p
+                              className="text-sm mb-3"
+                              style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+                            >
+                              {post.authorEmail}
+                            </p>
+                            <p
+                              className="text-[12px] leading-[1.6]"
+                              style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                            >
                               {post.anonymousToCommunity
                                 ? "Posted anonymously to the community"
                                 : "Visible publicly under the user's profile"}
                             </p>
                           </div>
 
-                          <div className="border rounded-xl p-4">
-                            <p className="text-sm text-gray-500">Risk metrics</p>
-                            <p className="text-2xl font-bold mt-1">{post.riskScore}/100</p>
-                            <p className="text-sm text-gray-600 mt-2">
+                          {/* Risk metrics card */}
+                          <div
+                            className="rounded-xl p-4 border"
+                            style={{ backgroundColor: "#FAFAFA", borderColor: "#D6DCE1" }}
+                          >
+                            <p
+                              className="text-[12px] font-semibold mb-2"
+                              style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+                            >
+                              Risk metrics
+                            </p>
+                            <p
+                              className="text-[30px] leading-none tracking-[-0.03em] mb-1"
+                              style={{ fontFamily: "DM Serif Display, serif", color: "#274C77" }}
+                            >
+                              {post.riskScore}
+                              <span
+                                className="text-[18px] ml-1"
+                                style={{ opacity: 0.4, fontFamily: "DM Sans, sans-serif" }}
+                              >
+                                /100
+                              </span>
+                            </p>
+                            <p
+                              className="text-sm"
+                              style={{ color: "#274C77", opacity: 0.55, fontFamily: "DM Sans, sans-serif" }}
+                            >
                               Sentiment {post.sentimentScore.toFixed(2)}
                             </p>
                           </div>
 
-                          <div className="grid gap-2">
+                          {/* Moderation actions */}
+                          <div className="space-y-2">
                             {post.flaggedForReview ? (
                               <>
                                 <button
                                   onClick={() => runForumAction(post.id, escalateFlaggedForumPost)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full bg-red-600 text-white py-2.5 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                                  style={{ backgroundColor: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
                                 >
                                   Escalate to Specialist
                                 </button>
                                 <button
                                   onClick={() => runForumAction(post.id, reviewFlaggedForumPost)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full border py-2.5 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: "transparent",
+                                    borderColor: "#D6DCE1",
+                                    color: "#274C77",
+                                    fontFamily: "DM Sans, sans-serif",
+                                  }}
                                 >
                                   Mark Reviewed
                                 </button>
                                 <button
                                   onClick={() => runForumAction(post.id, dismissFlaggedForumPost)}
                                   disabled={actionLoading === actionKey}
-                                  className="w-full border py-2.5 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+                                  style={{
+                                    backgroundColor: "transparent",
+                                    borderColor: "#D6DCE1",
+                                    color: "#274C77",
+                                    fontFamily: "DM Sans, sans-serif",
+                                  }}
                                 >
                                   Dismiss Flag
                                 </button>
                               </>
                             ) : (
-                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-gray-600">
+                              <div
+                                className="rounded-xl p-3 text-sm border"
+                                style={{
+                                  backgroundColor: "#F8FAFB",
+                                  borderColor: "#D6DCE1",
+                                  color: "#274C77",
+                                  opacity: 0.7,
+                                  fontFamily: "DM Sans, sans-serif",
+                                }}
+                              >
                                 {getFailureHint(post.moderationStatus)}
                               </div>
                             )}

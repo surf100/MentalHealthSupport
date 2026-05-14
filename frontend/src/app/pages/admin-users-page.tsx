@@ -1,6 +1,6 @@
 import { Footer } from "../components/footer";
 import { Header } from "../components/header";
-import { Ban, Search, Shield, ShieldCheck, UserCheck, Users } from "lucide-react";
+import { AlertCircle, Ban, Search, Shield, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   getAllUsers,
@@ -15,57 +15,83 @@ import {
 } from "../api/admin-api";
 import { useAuth } from "../auth/auth-context";
 
-function getRoleBadge(role: AdminUserRole) {
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getRoleBadge(role: AdminUserRole): { bg: string; color: string } {
   switch (role) {
     case "ADMIN":
-      return "bg-red-50 text-red-700";
+      return { bg: "rgba(36,76,90,0.13)", color: "#274C77" };
     case "SPECIALIST":
-      return "bg-purple-50 text-purple-700";
+      return { bg: "rgba(136,187,214,0.28)", color: "#274C77" };
     case "USER":
-      return "bg-emerald-50 text-emerald-700";
+      return { bg: "rgba(153,211,223,0.40)", color: "#274C77" };
     default:
-      return "bg-gray-50 text-gray-700";
+      return { bg: "rgba(205,205,205,0.50)", color: "#274C77" };
   }
 }
 
-function getRoleLabel(role: AdminUserRole) {
+function getRoleLabel(role: AdminUserRole): string {
   switch (role) {
-    case "ADMIN":
-      return "Admin";
-    case "SPECIALIST":
-      return "Specialist";
-    case "USER":
-      return "User";
-    default:
-      return role;
+    case "ADMIN":      return "Admin";
+    case "SPECIALIST": return "Specialist";
+    case "USER":       return "User";
+    default:           return role;
   }
 }
 
-function getStatusBadge(status: AdminUserStatus) {
+function getStatusBadge(status: AdminUserStatus): { bg: string; color: string } {
   switch (status) {
-    case "ACTIVE":
-      return "bg-emerald-50 text-emerald-700";
-    case "BANNED":
-      return "bg-red-50 text-red-700";
-    case "SUSPENDED":
-      return "bg-amber-50 text-amber-700";
-    default:
-      return "bg-gray-50 text-gray-700";
+    case "ACTIVE":    return { bg: "rgba(136,187,214,0.22)", color: "#274C77" };
+    case "BANNED":    return { bg: "rgba(36,76,90,0.12)", color: "#274C77" };
+    case "SUSPENDED": return { bg: "rgba(205,205,205,0.60)", color: "#274C77" };
+    default:          return { bg: "rgba(205,205,205,0.40)", color: "#274C77" };
   }
 }
 
-function getStatusLabel(status: AdminUserStatus) {
+function getStatusLabel(status: AdminUserStatus): string {
   switch (status) {
-    case "ACTIVE":
-      return "Active";
-    case "BANNED":
-      return "Banned";
-    case "SUSPENDED":
-      return "Suspended";
-    default:
-      return status;
+    case "ACTIVE":    return "Active";
+    case "BANNED":    return "Banned";
+    case "SUSPENDED": return "Suspended";
+    default:          return status;
   }
 }
+
+function getInitials(nickname: string): string {
+  return nickname.slice(0, 2).toUpperCase();
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+function SkeletonRow() {
+  return (
+    <div
+      className="grid grid-cols-12 gap-4 px-6 py-5 items-center border-b last:border-0"
+      style={{ borderColor: "rgba(36,76,90,0.07)" }}
+    >
+      <div className="col-span-4 flex items-center gap-3">
+        <div className="h-9 w-9 rounded-full animate-pulse flex-shrink-0" style={{ backgroundColor: "rgba(153,211,223,0.35)" }} />
+        <div className="space-y-2">
+          <div className="h-3 w-24 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.08)" }} />
+          <div className="h-2.5 w-32 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.05)" }} />
+        </div>
+      </div>
+      <div className="col-span-2">
+        <div className="h-6 w-16 rounded-full animate-pulse" style={{ backgroundColor: "rgba(153,211,223,0.25)" }} />
+      </div>
+      <div className="col-span-2">
+        <div className="h-6 w-14 rounded-full animate-pulse" style={{ backgroundColor: "rgba(136,187,214,0.18)" }} />
+      </div>
+      <div className="col-span-4 flex gap-2">
+        <div className="h-8 w-24 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.06)" }} />
+        <div className="h-8 w-24 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.06)" }} />
+        <div className="h-8 w-16 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.06)" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -111,10 +137,7 @@ export function AdminUsersPage() {
 
   async function handleChangeRole(user: AdminUserResponse) {
     const newRole = roleDrafts[user.id] ?? user.role;
-    if (newRole === user.role) {
-      return;
-    }
-
+    if (newRole === user.role) return;
     try {
       setActionLoading(user.id);
       const updated = await changeUserRole(user.id, newRole);
@@ -152,195 +175,416 @@ export function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div
+      className="min-h-screen flex flex-col font-sans"
+      style={{ backgroundColor: "#F9F7F3", color: "#274C77" }}
+    >
       <Header />
 
+      {/* ── Hero strip ─────────────────────────────────────────────────────── */}
+      <div
+        className="relative overflow-hidden border-b"
+        style={{ backgroundColor: "#A3CEF1", borderColor: "rgba(36,76,90,0.12)" }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.10]"
+          style={{
+            backgroundImage: "radial-gradient(#274C77 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <div className="relative z-10 max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-14 py-12">
+          <p
+            className="font-sans text-[11px] font-bold uppercase tracking-[0.22em] mb-3"
+            style={{ color: "rgba(36,76,90,0.60)" }}
+          >
+            Admin · Users
+          </p>
+          <h1
+            className="font-display text-[40px] sm:text-[52px] leading-[1.05] tracking-[-0.04em]"
+            style={{ color: "#274C77" }}
+          >
+            User Management
+          </h1>
+          <p
+            className="mt-3 font-sans text-[16px] leading-[1.75] tracking-[-0.01em] max-w-2xl"
+            style={{ color: "rgba(36,76,90,0.65)" }}
+          >
+            Manage platform users, review their roles, and control access to the SafeSpace system.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Main layout ────────────────────────────────────────────────────── */}
       <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-8 py-12">
-          <div className="mb-10">
-            <h1 className="text-5xl font-bold mb-3">Admin Users</h1>
-            <p className="text-lg text-gray-600 max-w-3xl">
-              Manage platform users, review their roles, and control access to
-              the SafeSpace system.
-            </p>
-          </div>
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-14 py-10">
+          <div className="grid grid-cols-12 gap-8 items-start">
 
-          <div className="grid grid-cols-12 gap-8">
-            <aside className="col-span-3">
-              <div className="border rounded-xl p-6 sticky top-8">
-                <h2 className="font-semibold mb-4">Overview</h2>
+            {/* ── Sidebar ──────────────────────────────────────────────────── */}
+            <aside className="col-span-12 lg:col-span-3">
+              <div
+                className="rounded-2xl p-6 sticky top-24 border"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "rgba(136,187,214,0.18)",
+                  boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                }}
+              >
+                <p
+                  className="font-sans text-[11px] font-bold uppercase tracking-[0.20em] mb-5"
+                  style={{ color: "#6096BA" }}
+                >
+                  Overview
+                </p>
 
-                <div className="space-y-4">
-                  <div className="rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm text-gray-500">Total users</p>
-                    <p className="text-2xl font-bold mt-1">
-                      {stats ? stats.totalUsers : "—"}
-                    </p>
-                  </div>
+                <div className="space-y-3">
+                  {[
+                    { label: "Total users",   value: stats?.totalUsers },
+                    { label: "Admins",        value: stats?.totalAdmins },
+                    { label: "Banned users",  value: stats?.totalBanned },
+                  ].map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="rounded-xl p-4 border"
+                      style={{ backgroundColor: "#F9F7F3", borderColor: "rgba(36,76,90,0.07)" }}
+                    >
+                      <p className="font-sans text-[12px] tracking-[-0.01em]" style={{ color: "rgba(36,76,90,0.55)" }}>
+                        {label}
+                      </p>
+                      <p className="font-display text-[32px] leading-none mt-1 tracking-[-0.03em]" style={{ color: "#274C77" }}>
+                        {loading || value === undefined
+                          ? <span className="inline-block h-8 w-10 rounded animate-pulse" style={{ backgroundColor: "rgba(36,76,90,0.08)" }} />
+                          : value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm text-gray-500">Admins</p>
-                    <p className="text-2xl font-bold mt-1">
-                      {stats ? stats.totalAdmins : "—"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm text-gray-500">Banned users</p>
-                    <p className="text-2xl font-bold mt-1">
-                      {stats ? stats.totalBanned : "—"}
-                    </p>
+                <div className="mt-6 pt-6 border-t" style={{ borderColor: "rgba(36,76,90,0.08)" }}>
+                  <div className="space-y-3">
+                    {[
+                      { icon: Users,  label: "User control",       desc: "Safe platform environment" },
+                      { icon: Shield, label: "Role management",     desc: "Admin & specialist access" },
+                      { icon: Ban,    label: "Access restriction",  desc: "Enforce community guidelines" },
+                    ].map(({ icon: Icon, label, desc }) => (
+                      <div key={label} className="flex items-start gap-3">
+                        <div
+                          className="mt-0.5 rounded-lg p-2 flex-shrink-0"
+                          style={{ backgroundColor: "rgba(153,211,223,0.35)" }}
+                        >
+                          <Icon className="w-3.5 h-3.5" style={{ color: "#274C77" }} />
+                        </div>
+                        <div>
+                          <p className="font-sans text-[13px] font-semibold leading-tight" style={{ color: "#274C77" }}>
+                            {label}
+                          </p>
+                          <p className="font-sans text-[12px] mt-0.5 leading-[1.5]" style={{ color: "rgba(36,76,90,0.55)" }}>
+                            {desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
             </aside>
 
-            <section className="col-span-9">
-              <div className="flex items-center gap-3 border px-4 py-3 rounded-xl mb-6">
-                <Search className="w-4 h-4 text-gray-400" />
+            {/* ── Table section ────────────────────────────────────────────── */}
+            <section className="col-span-12 lg:col-span-9">
+
+              {/* Search bar */}
+              <div
+                className="flex items-center gap-3 rounded-xl px-4 py-3 mb-5 border"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "rgba(136,187,214,0.25)",
+                  boxShadow: "0 2px 12px rgba(36,76,90,0.06)",
+                }}
+              >
+                <Search className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(36,76,90,0.40)" }} />
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search users by name, email, role, or status"
-                  className="w-full outline-none text-sm"
+                  placeholder="Search by name, email, role, or status…"
+                  className="w-full outline-none bg-transparent font-sans text-[14px] tracking-[-0.01em] placeholder:opacity-40"
+                  style={{ color: "#274C77" }}
                 />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="font-sans text-[12px] px-2 py-0.5 rounded"
+                    style={{ color: "rgba(36,76,90,0.50)" }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
 
+              {/* Table card */}
               {loading ? (
-                <div className="border rounded-xl p-10 text-center text-gray-500 text-sm">
-                  Loading users...
+                <div
+                  className="rounded-2xl border overflow-hidden"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "rgba(136,187,214,0.18)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                  }}
+                >
+                  <div
+                    className="grid grid-cols-12 gap-4 px-6 py-4 border-b"
+                    style={{ backgroundColor: "rgba(153,211,223,0.15)", borderColor: "rgba(36,76,90,0.08)" }}
+                  >
+                    {[
+                      { label: "User",    span: "col-span-4" },
+                      { label: "Role",    span: "col-span-2" },
+                      { label: "Status",  span: "col-span-2" },
+                      { label: "Actions", span: "col-span-4" },
+                    ].map(({ label, span }) => (
+                      <div
+                        key={label}
+                        className={`font-sans text-[11px] font-bold uppercase tracking-[0.14em] ${span}`}
+                        style={{ color: "rgba(36,76,90,0.50)" }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                  {Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
                 </div>
               ) : error ? (
-                <div className="border rounded-xl p-10 text-center">
-                  <p className="text-red-600 font-medium">{error}</p>
+                <div
+                  className="rounded-2xl border p-16 flex flex-col items-center text-center"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "rgba(136,187,214,0.18)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                  }}
+                >
+                  <div className="rounded-2xl p-4 mb-5" style={{ backgroundColor: "rgba(36,76,90,0.06)" }}>
+                    <AlertCircle className="w-7 h-7" style={{ color: "#274C77" }} />
+                  </div>
+                  <h3 className="font-display text-[22px] tracking-[-0.03em] mb-2" style={{ color: "#274C77" }}>
+                    Failed to load users
+                  </h3>
+                  <p className="font-sans text-[14px] leading-[1.75] mb-6 max-w-xs" style={{ color: "rgba(36,76,90,0.60)" }}>
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="font-sans text-[14px] font-semibold px-5 py-2.5 rounded-sm transition"
+                    style={{ backgroundColor: "#6096BA", color: "#FFFFFF" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#274C77")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#6096BA")}
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : (
-                <div className="border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 border-b text-sm font-medium text-gray-600">
-                    <div className="col-span-4">User</div>
-                    <div className="col-span-2">Role</div>
-                    <div className="col-span-2">Status</div>
-                    <div className="col-span-4">Actions</div>
+                <div
+                  className="rounded-2xl border overflow-hidden"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "rgba(136,187,214,0.18)",
+                    boxShadow: "0 8px 40px rgba(36,76,90,0.08)",
+                  }}
+                >
+                  {/* Table header */}
+                  <div
+                    className="grid grid-cols-12 gap-4 px-6 py-4 border-b"
+                    style={{ backgroundColor: "rgba(153,211,223,0.15)", borderColor: "rgba(36,76,90,0.08)" }}
+                  >
+                    {[
+                      { label: "User",    span: "col-span-4" },
+                      { label: "Role",    span: "col-span-2" },
+                      { label: "Status",  span: "col-span-2" },
+                      { label: "Actions", span: "col-span-4" },
+                    ].map(({ label, span }) => (
+                      <div
+                        key={label}
+                        className={`font-sans text-[11px] font-bold uppercase tracking-[0.14em] ${span}`}
+                        style={{ color: "rgba(36,76,90,0.50)" }}
+                      >
+                        {label}
+                      </div>
+                    ))}
                   </div>
 
                   {filteredUsers.length === 0 ? (
-                    <div className="p-10 text-center">
-                      <h3 className="text-xl font-semibold mb-2">No users found</h3>
-                      <p className="text-sm text-gray-600">
-                        Try searching with different keywords.
+                    <div className="py-20 flex flex-col items-center text-center">
+                      <div className="rounded-2xl p-4 mb-5" style={{ backgroundColor: "rgba(153,211,223,0.20)" }}>
+                        <Users className="w-7 h-7" style={{ color: "rgba(36,76,90,0.40)" }} />
+                      </div>
+                      <h3 className="font-display text-[22px] tracking-[-0.03em] mb-2" style={{ color: "#274C77" }}>
+                        No users found
+                      </h3>
+                      <p className="font-sans text-[14px] leading-[1.75] max-w-xs" style={{ color: "rgba(36,76,90,0.55)" }}>
+                        No users match your search. Try different keywords.
                       </p>
                     </div>
                   ) : (
-                    <div className="divide-y">
-                      {filteredUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="grid grid-cols-12 gap-4 px-6 py-5 items-center"
-                        >
-                          {/*
-                            The backend also blocks self-role and self-ban changes.
-                            This keeps the UI aligned with that rule.
-                          */}
-                          <div className="col-span-4">
-                            <p className="font-medium text-gray-900">{user.nickname}</p>
-                            <p className="text-sm text-gray-500 mt-1">{user.email}</p>
-                          </div>
+                    <div>
+                      {filteredUsers.map((user, idx) => {
+                        const isSelf = currentUser?.email === user.email;
+                        const isActing = actionLoading === user.id;
+                        const currentDraftRole = roleDrafts[user.id] ?? user.role;
+                        const roleUnchanged = currentDraftRole === user.role;
+                        const roleBadge = getRoleBadge(user.role);
+                        const statusBadge = getStatusBadge(user.status);
 
-                          <div className="col-span-2">
-                            <span className={`text-xs px-3 py-1 rounded-full ${getRoleBadge(user.role)}`}>
-                              {getRoleLabel(user.role)}
-                            </span>
-                          </div>
+                        return (
+                          <div
+                            key={user.id}
+                            className="grid grid-cols-12 gap-4 px-6 py-5 items-center transition-colors"
+                            style={{
+                              borderBottom: idx < filteredUsers.length - 1 ? "1px solid rgba(36,76,90,0.07)" : "none",
+                              opacity: isActing ? 0.6 : 1,
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(153,211,223,0.06)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                          >
+                            {/*
+                              The backend also blocks self-role and self-ban changes.
+                              This keeps the UI aligned with that rule.
+                            */}
 
-                          <div className="col-span-2">
-                            <span className={`text-xs px-3 py-1 rounded-full ${getStatusBadge(user.status)}`}>
-                              {getStatusLabel(user.status)}
-                            </span>
-                          </div>
-
-                          <div className="col-span-4 flex flex-wrap gap-2">
-                            <select
-                              value={roleDrafts[user.id] ?? user.role}
-                              onChange={(e) =>
-                                setRoleDrafts((prev) => ({
-                                  ...prev,
-                                  [user.id]: e.target.value as AdminUserRole,
-                                }))
-                              }
-                              disabled={actionLoading === user.id || currentUser?.email === user.email}
-                              className="border px-3 py-2 rounded-md text-sm bg-white disabled:opacity-50"
-                            >
-                              <option value="USER">User</option>
-                              <option value="ADMIN">Admin</option>
-                              <option value="SPECIALIST">Specialist</option>
-                            </select>
-
-                            <button
-                              onClick={() => handleChangeRole(user)}
-                              disabled={
-                                actionLoading === user.id ||
-                                currentUser?.email === user.email ||
-                                (roleDrafts[user.id] ?? user.role) === user.role
-                              }
-                              className="border px-3 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <UserCheck className="w-4 h-4" />
-                              Update Role
-                            </button>
-
-                            {user.status === "ACTIVE" ? (
-                              <button
-                                onClick={() => handleBan(user)}
-                                disabled={actionLoading === user.id || currentUser?.email === user.email}
-                                className="border px-3 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2 disabled:opacity-50"
+                            {/* User */}
+                            <div className="col-span-4 flex items-center gap-3">
+                              <div
+                                className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 font-sans text-[11px] font-bold"
+                                style={{
+                                  backgroundColor: isSelf ? "rgba(136,187,214,0.30)" : "rgba(153,211,223,0.30)",
+                                  color: "#274C77",
+                                }}
                               >
-                                <Ban className="w-4 h-4" />
-                                Ban
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleUnban(user)}
-                                disabled={actionLoading === user.id}
-                                className="border px-3 py-2 rounded-md text-sm hover:bg-gray-50 inline-flex items-center gap-2 disabled:opacity-50"
+                                {getInitials(user.nickname)}
+                              </div>
+                              <div>
+                                <p className="font-sans text-[13px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "#274C77" }}>
+                                  {user.nickname}
+                                  {isSelf && (
+                                    <span className="ml-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "#6096BA" }}>
+                                      You
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="font-sans text-[12px] mt-0.5 tracking-[-0.01em]" style={{ color: "rgba(36,76,90,0.50)" }}>
+                                  {user.email}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Role badge */}
+                            <div className="col-span-2">
+                              <span
+                                className="inline-block font-sans text-[11px] font-bold uppercase tracking-[0.12em] px-3 py-1 rounded-full"
+                                style={{ backgroundColor: roleBadge.bg, color: roleBadge.color }}
                               >
-                                <ShieldCheck className="w-4 h-4" />
-                                Unban
+                                {getRoleLabel(user.role)}
+                              </span>
+                            </div>
+
+                            {/* Status badge */}
+                            <div className="col-span-2">
+                              <span
+                                className="inline-block font-sans text-[11px] font-bold uppercase tracking-[0.12em] px-3 py-1 rounded-full"
+                                style={{ backgroundColor: statusBadge.bg, color: statusBadge.color }}
+                              >
+                                {getStatusLabel(user.status)}
+                              </span>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="col-span-4 flex flex-wrap gap-2 items-center">
+                              <select
+                                value={currentDraftRole}
+                                onChange={(e) =>
+                                  setRoleDrafts((prev) => ({
+                                    ...prev,
+                                    [user.id]: e.target.value as AdminUserRole,
+                                  }))
+                                }
+                                disabled={isActing || isSelf}
+                                className="font-sans text-[13px] tracking-[-0.01em] px-3 py-1.5 rounded-lg border outline-none transition disabled:opacity-40"
+                                style={{
+                                  backgroundColor: "#F6F8F9",
+                                  borderColor: "rgba(36,76,90,0.15)",
+                                  color: "#274C77",
+                                }}
+                              >
+                                <option value="USER">User</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="SPECIALIST">Specialist</option>
+                              </select>
+
+                              <button
+                                onClick={() => handleChangeRole(user)}
+                                disabled={isActing || isSelf || roleUnchanged}
+                                className="font-sans text-[12px] font-semibold px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 transition disabled:opacity-40"
+                                style={{
+                                  borderColor: "rgba(36,76,90,0.18)",
+                                  color: "#274C77",
+                                  backgroundColor: "transparent",
+                                }}
+                                onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "rgba(136,187,214,0.15)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                Apply
                               </button>
-                            )}
+
+                              {user.status === "ACTIVE" ? (
+                                <button
+                                  onClick={() => handleBan(user)}
+                                  disabled={isActing || isSelf}
+                                  className="font-sans text-[12px] font-semibold px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 transition disabled:opacity-40"
+                                  style={{
+                                    borderColor: "rgba(36,76,90,0.18)",
+                                    color: "#274C77",
+                                    backgroundColor: "transparent",
+                                  }}
+                                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "rgba(36,76,90,0.07)"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                  Ban
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUnban(user)}
+                                  disabled={isActing}
+                                  className="font-sans text-[12px] font-semibold px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 transition disabled:opacity-40"
+                                  style={{
+                                    borderColor: "rgba(136,187,214,0.35)",
+                                    color: "#274C77",
+                                    backgroundColor: "rgba(136,187,214,0.10)",
+                                  }}
+                                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "rgba(136,187,214,0.22)"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(136,187,214,0.10)"; }}
+                                >
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  Unban
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-6 mt-8">
-                <div className="border rounded-xl p-6">
-                  <Users className="w-6 h-6 text-emerald-600 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">User control</h3>
-                  <p className="text-sm text-gray-600 leading-6">
-                    Review users and maintain a safe platform environment.
-                  </p>
-                </div>
-
-                <div className="border rounded-xl p-6">
-                  <Shield className="w-6 h-6 text-blue-600 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Role management</h3>
-                  <p className="text-sm text-gray-600 leading-6">
-                    Assign admin and specialist access where needed.
-                  </p>
-                </div>
-
-                <div className="border rounded-xl p-6">
-                  <Ban className="w-6 h-6 text-red-600 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Access restriction</h3>
-                  <p className="text-sm text-gray-600 leading-6">
-                    Restrict users who violate safety or community guidelines.
-                  </p>
-                </div>
-              </div>
+              {/* Entry count note */}
+              {!loading && !error && filteredUsers.length > 0 && (
+                <p
+                  className="mt-4 font-sans text-[12px] tracking-[-0.01em]"
+                  style={{ color: "rgba(36,76,90,0.45)" }}
+                >
+                  Showing {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
+                  {query ? ` matching "${query}"` : ""}
+                </p>
+              )}
             </section>
           </div>
         </div>

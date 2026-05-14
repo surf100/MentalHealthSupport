@@ -152,6 +152,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.escalateFlaggedReport(authentication.getName(), id));
     }
 
+    @PutMapping("/forum-risk/posts/{id}/specialist-note")
+@PreAuthorize("hasAnyRole('ADMIN', 'SPECIALIST')")
+public ResponseEntity<ForumModerationQueueItemResponse> addForumSpecialistNote(
+        Authentication authentication,
+        @PathVariable Long id,
+        @Valid @RequestBody SpecialistResponseRequest request
+) {
+    return ResponseEntity.ok(adminService.addForumSpecialistNote(authentication.getName(), id, request));
+}
+
     @PutMapping("/report-risk/reports/{id}/reveal-identity")
     @PreAuthorize("hasRole('SPECIALIST')")
     public ResponseEntity<ReportModerationQueueItemResponse> revealAnonymousReportIdentity(

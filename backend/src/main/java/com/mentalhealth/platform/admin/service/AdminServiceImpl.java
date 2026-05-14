@@ -369,6 +369,29 @@ public class AdminServiceImpl implements AdminService {
         return ReportModerationQueueItemResponse.from(savedReport);
     }
 
+    @Override
+@Transactional
+public ForumModerationQueueItemResponse addForumSpecialistNote(
+        String actorEmail, Long postId, SpecialistResponseRequest request) {
+
+    User actor = getUserByEmail(actorEmail);
+    requireModerator(actor, true); // true = specialist тоже может
+
+    ForumPost post = getForumPostById(postId);
+    if (post.getModerationStatus() != ForumPostModerationStatus.ESCALATED_TO_SPECIALIST)
+        throw new BadRequestException("Only forum posts escalated to specialists can receive a specialist note");
+
+    String message = request.getMessage().trim();
+    post.setSpecialistNote(message);
+    ForumPost savedPost = forumPostRepository.save(post);
+
+    auditLogRepository.save(new AuditLog(actor, AuditAction.FORUM_POST_SPECIALIST_NOTE_ADDED,
+            "forum-post#" + savedPost.getId(),
+            "Added internal specialist note for forum post by " + savedPost.getUser().getEmail() + "."));
+
+    return ForumModerationQueueItemResponse.from(savedPost);
+}
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private void saveNotification(User user, NotificationType type, String title, String message) {

@@ -8,6 +8,7 @@ import {
   addSpecialistResponse,
   dismissFlaggedForumPost,
   dismissFlaggedReport,
+  addForumSpecialistNote,
   escalateFlaggedForumPost,
   escalateFlaggedReport,
   getForumModerationPosts,
@@ -292,6 +293,7 @@ export function AdminForumRiskPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [responseDrafts, setResponseDrafts] = useState<Record<number, string>>({});
+  const [forumNoteDrafts, setForumNoteDrafts] = useState<Record<number, string>>({});
   const [pendingRevealReport, setPendingRevealReport] =
     useState<ReportModerationQueueItemResponse | null>(null);
 
@@ -413,6 +415,27 @@ export function AdminForumRiskPage() {
       setActionLoading(null);
     }
   }
+
+async function runForumSpecialistNote(postId: number) {
+  const message = forumNoteDrafts[postId]?.trim() ?? "";
+  if (!message) {
+    alert("Enter a specialist note before submitting.");
+    return;
+  }
+  const actionKey = `forum-note-${postId}`;
+  try {
+    setActionLoading(actionKey);
+    const updated = await addForumSpecialistNote(postId, message);
+    setForumPosts((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item))
+    );
+    setForumNoteDrafts((prev) => ({ ...prev, [postId]: "" }));
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to submit specialist note");
+  } finally {
+    setActionLoading(null);
+  }
+}
 
   async function runRevealIdentity(reportId: number) {
     const actionKey = `report-reveal-${reportId}`;
@@ -1315,57 +1338,88 @@ export function AdminForumRiskPage() {
 
                           {/* Moderation actions */}
                           <div className="space-y-2">
-                            {post.flaggedForReview ? (
-                              <>
-                                <button
-                                  onClick={() => runForumAction(post.id, escalateFlaggedForumPost)}
-                                  disabled={actionLoading === actionKey}
-                                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                                  style={{ backgroundColor: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
-                                >
-                                  Escalate to Specialist
-                                </button>
-                                <button
-                                  onClick={() => runForumAction(post.id, reviewFlaggedForumPost)}
-                                  disabled={actionLoading === actionKey}
-                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
-                                  style={{
-                                    backgroundColor: "transparent",
-                                    borderColor: "#D6DCE1",
-                                    color: "#274C77",
-                                    fontFamily: "DM Sans, sans-serif",
-                                  }}
-                                >
-                                  Mark Reviewed
-                                </button>
-                                <button
-                                  onClick={() => runForumAction(post.id, dismissFlaggedForumPost)}
-                                  disabled={actionLoading === actionKey}
-                                  className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
-                                  style={{
-                                    backgroundColor: "transparent",
-                                    borderColor: "#D6DCE1",
-                                    color: "#274C77",
-                                    fontFamily: "DM Sans, sans-serif",
-                                  }}
-                                >
-                                  Dismiss Flag
-                                </button>
-                              </>
-                            ) : (
-                              <div
-                                className="rounded-xl p-3 text-sm border"
-                                style={{
-                                  backgroundColor: "#F8FAFB",
-                                  borderColor: "#D6DCE1",
-                                  color: "#274C77",
-                                  opacity: 0.7,
-                                  fontFamily: "DM Sans, sans-serif",
-                                }}
-                              >
-                                {getFailureHint(post.moderationStatus)}
-                              </div>
-                            )}
+                            {post.flaggedForReview && isAdmin ? (
+  <>
+    <button
+      onClick={() => runForumAction(post.id, escalateFlaggedForumPost)}
+      disabled={actionLoading === actionKey}
+      className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "#DC2626", fontFamily: "DM Sans, sans-serif" }}
+    >
+      Escalate to Specialist
+    </button>
+    <button
+      onClick={() => runForumAction(post.id, reviewFlaggedForumPost)}
+      disabled={actionLoading === actionKey}
+      className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "transparent", borderColor: "#D6DCE1",
+               color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+    >
+      Mark Reviewed
+    </button>
+    <button
+      onClick={() => runForumAction(post.id, dismissFlaggedForumPost)}
+      disabled={actionLoading === actionKey}
+      className="w-full py-2.5 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "transparent", borderColor: "#D6DCE1",
+               color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+    >
+      Dismiss Flag
+    </button>
+  </>
+) : post.moderationStatus === "ESCALATED_TO_SPECIALIST" ? (
+  <div className="space-y-2">
+    {post.specialistNote && (
+      <div
+        className="rounded-xl p-3 border"
+        style={{ backgroundColor: "#F3E8FF", borderColor: "#E9D5FF",
+                 fontFamily: "DM Sans, sans-serif" }}
+      >
+        <p
+          className="text-[11px] font-bold uppercase tracking-[0.18em] mb-1.5"
+          style={{ color: "#7E22CE" }}
+        >
+          Internal specialist note
+        </p>
+        <p className="text-sm leading-[1.7]" style={{ color: "#6B21A8" }}>
+          {post.specialistNote}
+        </p>
+      </div>
+    )}
+    <textarea
+      value={forumNoteDrafts[post.id] ?? ""}
+      onChange={(e) =>
+        setForumNoteDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))
+      }
+      rows={4}
+      placeholder={
+        post.specialistNote
+          ? "Update the internal note for this case."
+          : "Add an internal note (not visible to users)."
+      }
+      disabled={actionLoading === `forum-note-${post.id}`}
+      className="w-full rounded-xl px-4 py-3 text-sm outline-none resize-none border"
+      style={{ backgroundColor: "#F8FAFB", borderColor: "#D6DCE1",
+               color: "#274C77", fontFamily: "DM Sans, sans-serif" }}
+    />
+    <button
+      onClick={() => runForumSpecialistNote(post.id)}
+      disabled={actionLoading === `forum-note-${post.id}`}
+      className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+      style={{ backgroundColor: "#7E22CE", fontFamily: "DM Sans, sans-serif" }}
+    >
+      {post.specialistNote ? "Update Note" : "Save Specialist Note"}
+    </button>
+  </div>
+) : (
+  <div
+    className="rounded-xl p-3 text-sm border"
+    style={{ backgroundColor: "#F8FAFB", borderColor: "#D6DCE1",
+             color: "#274C77", opacity: 0.7, fontFamily: "DM Sans, sans-serif" }}
+  >
+    {getFailureHint(post.moderationStatus)}
+  </div>
+)}
                           </div>
                         </div>
                       </div>

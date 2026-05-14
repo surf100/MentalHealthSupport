@@ -50,4 +50,9 @@ public interface AdminService {
             Long reportId,
             SpecialistResponseRequest request
     );
+    ForumModerationQueueItemResponse addForumSpecialistNote(
+        String actorEmail,
+        Long postId,
+        SpecialistResponseRequest request
+);
 }

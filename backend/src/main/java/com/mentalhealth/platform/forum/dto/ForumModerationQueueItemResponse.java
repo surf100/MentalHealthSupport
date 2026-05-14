@@ -24,6 +24,7 @@ public class ForumModerationQueueItemResponse {
     private LocalDateTime reviewedAt;
     private LocalDateTime specialistReferredAt;
     private LocalDateTime createdAt;
+    private String specialistNote;
 
     public ForumModerationQueueItemResponse() {
     }
@@ -32,6 +33,7 @@ public class ForumModerationQueueItemResponse {
         ForumModerationQueueItemResponse dto = new ForumModerationQueueItemResponse();
         dto.id = post.getId();
         dto.title = post.getTitle();
+        dto.specialistNote = post.getSpecialistNote();
         dto.content = post.getContent();
         dto.category = post.getCategory().name();
         dto.authorNickname = post.getUser().getNickname();
@@ -53,6 +55,7 @@ public class ForumModerationQueueItemResponse {
 
     public Long getId() { return id; }
     public String getTitle() { return title; }
+    public String getSpecialistNote() { return specialistNote; }
     public String getContent() { return content; }
     public String getCategory() { return category; }
     public String getAuthorNickname() { return authorNickname; }

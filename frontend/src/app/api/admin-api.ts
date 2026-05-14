@@ -133,6 +133,7 @@ export type ForumModerationQueueItemResponse = {
   reviewedAt: string | null;
   specialistReferredAt: string | null;
   createdAt: string;
+   specialistNote: string | null;
 };
 
 export type ReportModerationQueueItemResponse = {
@@ -169,6 +170,21 @@ export async function getAllUsers(): Promise<AdminUserResponse[]> {
     headers: authHeaders(),
   });
   return handleResponse<AdminUserResponse[]>(response);
+}
+
+export async function addForumSpecialistNote(
+  id: number,
+  message: string
+): Promise<ForumModerationQueueItemResponse> {
+  const response = await fetch(
+    `${ADMIN_API_BASE_URL}/forum-risk/posts/${id}/specialist-note`,
+    {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({ message } satisfies SpecialistResponseRequest),
+    }
+  );
+  return handleResponse<ForumModerationQueueItemResponse>(response);
 }
 
 export async function getStats(): Promise<AdminStatsResponse> {

@@ -1,9 +1,22 @@
 package com.mentalhealth.platform.forum.entity;
 
-import com.mentalhealth.platform.user.entity.User;
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
+
+import com.mentalhealth.platform.user.entity.User;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "forum_posts")
@@ -68,6 +81,12 @@ public class ForumPost {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // После поля moderationNotes (строка ~45):
+@Column(name = "specialist_note", columnDefinition = "TEXT")
+private String specialistNote;
+
+// Геттер и сеттер в конце:
+
     public ForumPost() {}
 
     @PrePersist
@@ -100,7 +119,9 @@ public class ForumPost {
     public LocalDateTime getSpecialistReferredAt() { return specialistReferredAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public String getSpecialistNote() { return specialistNote; }
 
+    public void setSpecialistNote(String specialistNote) { this.specialistNote = specialistNote; }
     public void setId(Long id) { this.id = id; }
     public void setUser(User user) { this.user = user; }
     public void setTitle(String title) { this.title = title; }

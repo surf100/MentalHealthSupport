@@ -266,7 +266,7 @@ export function NotificationsPage() {
               className="font-sans mt-2"
               style={{
                 fontSize: 15,
-                color: "rgba(36,76,90,0.65)",
+                color: "rgba(87, 63, 12, 0.65)",
                 letterSpacing: "-0.01em",
                 lineHeight: 1.75,
               }}

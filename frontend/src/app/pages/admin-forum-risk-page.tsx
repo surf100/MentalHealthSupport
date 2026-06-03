@@ -297,6 +297,10 @@ export function AdminForumRiskPage() {
   const [pendingRevealReport, setPendingRevealReport] =
     useState<ReportModerationQueueItemResponse | null>(null);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+
   useEffect(() => {
     async function load() {
       try {
@@ -360,6 +364,23 @@ export function AdminForumRiskPage() {
       return matchesStatus && textBlob.toLowerCase().includes(q);
     });
   }, [activeItems, query, statusFilter, view]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredItems.slice(startIndex, startIndex + pageSize);
+  }, [filteredItems, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, statusFilter, view, queueMode]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const criticalCount = activeItems.filter((item) => item.riskLevel === "CRITICAL").length;
   const flaggedCount = activeItems.filter((item) => item.flaggedForReview).length;
@@ -817,7 +838,7 @@ async function runForumSpecialistNote(postId: number) {
 
               {/* ── REPORTS ──────────────────────────────────────────────────── */}
               {view === "REPORTS" &&
-                filteredItems.map((item) => {
+                paginatedItems.map((item) => {
                   const report = item as ReportModerationQueueItemResponse;
                   const actionKey = `report-${report.id}`;
                   const revealActionKey = `report-reveal-${report.id}`;
@@ -1155,7 +1176,7 @@ async function runForumSpecialistNote(postId: number) {
 
               {/* ── FORUM POSTS ───────────────────────────────────────────────── */}
               {view === "FORUM" &&
-                filteredItems.map((item) => {
+                paginatedItems.map((item) => {
                   const post = item as ForumModerationQueueItemResponse;
                   const actionKey = `forum-${post.id}`;
 
@@ -1426,6 +1447,77 @@ async function runForumSpecialistNote(postId: number) {
                     </article>
                   );
                 })}
+            </div>
+          )}
+
+
+          {/* ── Pagination ───────────────────────────────────────────────────── */}
+          {!loading && !error && filteredItems.length > 0 && (
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p
+                className="text-[12px] tracking-[-0.01em]"
+                style={{ color: "#274C77", opacity: 0.5, fontFamily: "DM Sans, sans-serif" }}
+              >
+                Showing {(currentPage - 1) * pageSize + 1}–
+                {Math.min(currentPage * pageSize, filteredItems.length)} of {filteredItems.length}{" "}
+                {filteredItems.length === 1 ? "item" : "items"}
+              </p>
+
+              {totalPages > 1 && (
+                <div
+                  className="flex items-center gap-2 rounded-xl border p-2"
+                  style={{ backgroundColor: "#FFFFFF", borderColor: "#D6DCE1" }}
+                >
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: currentPage === 1 ? "#F8FAFB" : "#274C77",
+                      color: currentPage === 1 ? "rgba(36,76,90,0.45)" : "#FFFFFF",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1 flex-wrap justify-center">
+                    {Array.from({ length: totalPages }).map((_, index) => {
+                      const page = index + 1;
+                      const isActive = currentPage === page;
+
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className="w-9 h-9 rounded-lg text-[13px] font-semibold transition-colors"
+                          style={{
+                            backgroundColor: isActive ? "#6096BA" : "transparent",
+                            color: isActive ? "#FFFFFF" : "#274C77",
+                            fontFamily: "DM Sans, sans-serif",
+                            opacity: isActive ? 1 : 0.7,
+                          }}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: currentPage === totalPages ? "#F8FAFB" : "#274C77",
+                      color: currentPage === totalPages ? "rgba(36,76,90,0.45)" : "#FFFFFF",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

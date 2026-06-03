@@ -103,6 +103,10 @@ export function AdminUsersPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [roleDrafts, setRoleDrafts] = useState<Record<number, AdminUserRole>>({});
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
   useEffect(() => {
     async function load() {
       try {
@@ -134,6 +138,24 @@ export function AdminUsersPage() {
         u.status.toLowerCase().includes(q)
     );
   }, [query, users]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(startIndex, startIndex + pageSize);
+  }, [filteredUsers, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
 
   async function handleChangeRole(user: AdminUserResponse) {
     const newRole = roleDrafts[user.id] ?? user.role;
@@ -424,7 +446,7 @@ export function AdminUsersPage() {
                     </div>
                   ) : (
                     <div>
-                      {filteredUsers.map((user, idx) => {
+                      {paginatedUsers.map((user, idx) => {
                         const isSelf = currentUser?.email === user.email;
                         const isActing = actionLoading === user.id;
                         const currentDraftRole = roleDrafts[user.id] ?? user.role;
@@ -437,7 +459,7 @@ export function AdminUsersPage() {
                             key={user.id}
                             className="grid grid-cols-12 gap-4 px-6 py-5 items-center transition-colors"
                             style={{
-                              borderBottom: idx < filteredUsers.length - 1 ? "1px solid rgba(36,76,90,0.07)" : "none",
+                              borderBottom: idx < paginatedUsers.length - 1 ? "1px solid rgba(36,76,90,0.07)" : "none",
                               opacity: isActing ? 0.6 : 1,
                             }}
                             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(153,211,223,0.06)")}
@@ -575,13 +597,78 @@ export function AdminUsersPage() {
                 </div>
               )}
 
+              {/* Pagination */}
+              {!loading && !error && filteredUsers.length > 0 && totalPages > 1 && (
+                <div
+                  className="mt-5 flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: "rgba(136,187,214,0.18)",
+                    boxShadow: "0 2px 12px rgba(36,76,90,0.05)",
+                  }}
+                >
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="font-sans text-[13px] font-semibold px-4 py-2 rounded-md transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor:
+                        currentPage === 1 ? "rgba(36,76,90,0.06)" : "#274C77",
+                      color:
+                        currentPage === 1 ? "rgba(36,76,90,0.45)" : "#FFFFFF",
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    {Array.from({ length: totalPages }).map((_, index) => {
+                      const page = index + 1;
+                      const isActive = currentPage === page;
+
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className="font-sans text-[13px] font-semibold w-9 h-9 rounded-md transition"
+                          style={{
+                            backgroundColor: isActive
+                              ? "#274C77"
+                              : "rgba(153,211,223,0.20)",
+                            color: isActive ? "#FFFFFF" : "#274C77",
+                          }}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="font-sans text-[13px] font-semibold px-4 py-2 rounded-md transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor:
+                        currentPage === totalPages ? "rgba(36,76,90,0.06)" : "#274C77",
+                      color:
+                        currentPage === totalPages ? "rgba(36,76,90,0.45)" : "#FFFFFF",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+
               {/* Entry count note */}
               {!loading && !error && filteredUsers.length > 0 && (
                 <p
                   className="mt-4 font-sans text-[12px] tracking-[-0.01em]"
                   style={{ color: "rgba(36,76,90,0.45)" }}
                 >
-                  Showing {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
+                  Showing {(currentPage - 1) * pageSize + 1}–
+                  {Math.min(currentPage * pageSize, filteredUsers.length)} of{" "}
+                  {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
                   {query ? ` matching "${query}"` : ""}
                 </p>
               )}

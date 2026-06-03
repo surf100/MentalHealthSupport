@@ -6,6 +6,7 @@ export interface CurrentUser {
   email: string;
   nickname: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
   role: string;
 }
 

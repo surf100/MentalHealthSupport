@@ -79,6 +79,7 @@ export interface CurrentUserResponse {
   nickname: string;
   displayName: string | null;
   role: string;
+  avatarUrl: string | null;
 }
 
 export async function getCurrentUser(): Promise<CurrentUserResponse> {

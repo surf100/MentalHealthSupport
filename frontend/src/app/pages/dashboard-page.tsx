@@ -345,29 +345,7 @@ export function DashboardPage() {
             </p>
           </div>
 
-          {/* Avatar + meta */}
-          <div
-            className="hidden lg:flex items-center gap-4 rounded-xl px-5 py-4 shrink-0"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.50)",
-              border: "1px solid rgba(136,187,214,0.18)",
-            }}
-          >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0"
-              style={{ backgroundColor: "#6096BA", color: "#ffffff" }}
-            >
-              {avatarInitials}
-            </div>
-            <div>
-              <p className="text-[14px] font-semibold" style={{ color: "#274C77" }}>
-                {profile?.nickname || "User"}
-              </p>
-              <p className="text-[12px]" style={{ color: "rgba(36,76,90,0.50)" }}>
-                Member since {memberSince}
-              </p>
-            </div>
-          </div>
+          
         </div>
       </div>
 
@@ -435,7 +413,7 @@ export function DashboardPage() {
                   label="Notifications"
                   value={stats?.notificationsCount ?? 0}
                   description="Unread updates and system alerts."
-                  accent="#F9F7F3"
+                  accent="#584e38"
                   onClick={() => navigate("/notifications")}
                 />
                 <StatCard
@@ -614,7 +592,7 @@ export function DashboardPage() {
                   <div className="grid grid-cols-3 gap-4">
                     {[
                       { label: "Forum Posts", value: stats?.postsCount ?? 0, accent: "#6096BA" },
-                      { label: "Reports", value: stats?.reportsCount ?? 0, accent: "#F9F7F3" },
+                      { label: "Reports", value: stats?.reportsCount ?? 0, accent: "#584e38" },
                       { label: "Notifications", value: stats?.notificationsCount ?? 0, accent: "#f59e0b" },
                     ].map(({ label, value, accent }) => (
                       <div
@@ -646,11 +624,15 @@ export function DashboardPage() {
                 >
                   <div>
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold mb-4"
-                      style={{ backgroundColor: "#6096BA", color: "#ffffff" }}
-                    >
-                      {avatarInitials}
-                    </div>
+  className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-[15px] font-bold mb-4"
+  style={{ backgroundColor: "#6096BA", color: "#ffffff" }}
+>
+  {profile?.avatar ? (
+    <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+  ) : (
+    avatarInitials
+  )}
+</div>
                     <p className="text-[15px] font-semibold mb-0.5" style={{ color: "#ffffff" }}>
                       {profile?.nickname || "Not set"}
                     </p>

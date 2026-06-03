@@ -122,11 +122,15 @@ export function Header() {
                   }}
                 >
                   <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold"
-                    style={{ backgroundColor: "#274C77", color: "#F9F7F3" }}
-                  >
-                    {getInitials(user.displayName || user.nickname)}
-                  </div>
+  className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+  style={{ backgroundColor: "#274C77", color: "#F9F7F3" }}
+>
+  {user.avatarUrl ? (
+    <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+  ) : (
+    getInitials(user.displayName || user.nickname)
+  )}
+</div>
                   <span
                     className="text-[13px] font-semibold max-w-[100px] truncate"
                     style={{ color: "#274C77" }}

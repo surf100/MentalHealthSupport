@@ -178,7 +178,6 @@ export function ProfilePage() {
   const [privacyModeEnabled, setPrivacyModeEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [themePreference, setThemePreference] = useState("light");
-  const [languagePreference, setLanguagePreference] = useState("en");
 
   // avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -210,10 +209,8 @@ export function ProfilePage() {
         setPrivacyModeEnabled(data.privacyModeEnabled);
         setNotificationsEnabled(data.notificationsEnabled);
         setThemePreference(data.themePreference);
-        setLanguagePreference(data.languagePreference);
         setAvatarUrl(data.avatarUrl ?? null);
         applyThemePreference(data.themePreference);
-        applyLanguagePreference(data.languagePreference);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile");
       } finally {
@@ -282,7 +279,6 @@ export function ProfilePage() {
       setPrivacyModeEnabled(profile.privacyModeEnabled);
       setNotificationsEnabled(profile.notificationsEnabled);
       setThemePreference(profile.themePreference);
-      setLanguagePreference(profile.languagePreference);
       setAvatarUrl(profile.avatarUrl ?? null);
       setAvatarPreview(null);
       setSuccessMessage("");
@@ -306,7 +302,6 @@ export function ProfilePage() {
         privacyModeEnabled,
         notificationsEnabled,
         themePreference,
-        languagePreference,
       });
 
       setProfile(updated);
@@ -315,15 +310,13 @@ export function ProfilePage() {
       setPrivacyModeEnabled(updated.privacyModeEnabled);
       setNotificationsEnabled(updated.notificationsEnabled);
       setThemePreference(updated.themePreference);
-      setLanguagePreference(updated.languagePreference);
       setAvatarUrl(updated.avatarUrl ?? null);
       setAvatarPreview(null);
 
       applyThemePreference(updated.themePreference);
-      applyLanguagePreference(updated.languagePreference);
 
       if (user) {
-        setUser({ ...user, displayName: updated.displayName });
+        setUser({ ...user, displayName: updated.displayName, avatarUrl: updated.avatarUrl ?? null });
       }
       setIsEditing(false);
       setSuccessMessage("Profile updated successfully");
@@ -856,65 +849,9 @@ export function ProfilePage() {
                     {/* divider */}
                     <div style={{ borderTop: "1px solid rgba(36,76,90,0.07)", paddingTop: 4 }} />
 
-                    {/* theme */}
-                    <div>
-                      <label
-                        className="flex items-center gap-2 font-sans font-semibold mb-1.5"
-                        style={{ fontSize: 13, color: "#274C77" }}
-                      >
-                        <Palette className="w-3.5 h-3.5" style={{ color: "#6096BA" }} />
-                        Theme
-                      </label>
-                      <select
-                        value={themePreference}
-                        onChange={(e) => setThemePreference(e.target.value)}
-                        disabled={!isEditing}
-                        className="w-full font-sans rounded-lg outline-none"
-                        style={{
-                          fontSize: 14,
-                          padding: "10px 14px",
-                          backgroundColor: "#F6F8F9",
-                          border: "1px solid rgba(36,76,90,0.15)",
-                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                      </select>
-                    </div>
+                    
 
-                    {/* language */}
-                    <div>
-                      <label
-                        className="flex items-center gap-2 font-sans font-semibold mb-1.5"
-                        style={{ fontSize: 13, color: "#274C77" }}
-                      >
-                        <Globe className="w-3.5 h-3.5" style={{ color: "#6096BA" }} />
-                        Language
-                      </label>
-                      <select
-                        value={languagePreference}
-                        onChange={(e) => {
-                          setLanguagePreference(e.target.value);
-                          applyLanguagePreference(e.target.value);
-                        }}
-                        disabled={!isEditing}
-                        className="w-full font-sans rounded-lg outline-none"
-                        style={{
-                          fontSize: 14,
-                          padding: "10px 14px",
-                          backgroundColor: "#F6F8F9",
-                          border: "1px solid rgba(36,76,90,0.15)",
-                          color: isEditing ? "#274C77" : "rgba(36,76,90,0.50)",
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        <option value="en">English</option>
-                        <option value="ru">Русский</option>
-                        <option value="kz">Қазақша</option>
-                      </select>
-                    </div>
+        
 
                     {/* save button */}
                     {isEditing && (
@@ -968,10 +905,10 @@ export function ProfilePage() {
                         id: "notifications",
                         icon: Bell,
                         label: "Notifications",
-                        count: null,
+                        count: stats?.notificationsCount ?? null,
                         description: "Stay updated on report activity and alerts.",
                         route: "/notifications",
-                        accentColor: "#F9F7F3",
+                        accentColor: "#cba353",
                       },
                       {
                         id: "achievements",

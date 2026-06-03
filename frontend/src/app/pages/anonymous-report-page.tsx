@@ -205,7 +205,6 @@ export function AnonymousReportPage() {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
-    if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.description.trim()) newErrors.description = "Please describe the incident";
     if (!formData.date) newErrors.date = "Please select a date";
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
@@ -220,7 +219,7 @@ export function AnonymousReportPage() {
     setIsSubmitting(true);
 
     try {
-      const categoryLabel = formData.category.replace("-", " ");
+      const categoryLabel = formData.category ? formData.category.replace("-", " ") : "General report";
       const urgencyPrefix = formData.urgency ? "[URGENT] " : "";
       const locationSuffix = formData.location.trim() ? ` — ${formData.location.trim()}` : "";
 
@@ -450,8 +449,9 @@ export function AnonymousReportPage() {
                 {/* Category */}
                 <div style={{ marginBottom: "20px" }}>
                   <label style={labelStyle}>
-                    Report category
-                  </label>
+  Report category{" "}
+  <span style={{ fontWeight: 400, color: "rgba(36,76,90,0.45)" }}>(optional)</span>
+</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -838,58 +838,7 @@ export function AnonymousReportPage() {
 
                 <div style={{ borderTop: "1px solid rgba(205,205,205,0.55)", marginBottom: "24px" }} />
 
-                {/* Chat support */}
-                <div style={{ marginBottom: "24px" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "10px",
-                      background: "rgba(205,205,205,0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    <MessageSquare className="w-4 h-4" style={{ color: "rgba(36,76,90,0.45)" }} />
-                  </div>
-                  <h3
-                    style={{
-                      fontFamily: "DM Serif Display, serif",
-                      fontSize: "17px",
-                      fontWeight: 400,
-                      letterSpacing: "-0.03em",
-                      color: "#274C77",
-                      margin: "0 0 6px",
-                    }}
-                  >
-                    Chat support
-                  </h3>
-                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(36,76,90,0.60)", margin: "0 0 12px", lineHeight: 1.6 }}>
-                    Talk to a trained counselor anonymously.
-                  </p>
-                  <button
-                    disabled
-                    title="Coming soon"
-                    style={{
-                      width: "100%",
-                      fontFamily: "DM Sans, sans-serif",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      color: "rgba(36,76,90,0.35)",
-                      background: "rgba(205,205,205,0.25)",
-                      border: "1px solid rgba(205,205,205,0.5)",
-                      borderRadius: "8px",
-                      padding: "9px 16px",
-                      cursor: "not-allowed",
-                    }}
-                  >
-                    Coming soon
-                  </button>
-                </div>
-
-                <div style={{ borderTop: "1px solid rgba(205,205,205,0.55)", marginBottom: "24px" }} />
+                
 
                 {/* Resources */}
                 <div style={{ marginBottom: "24px" }}>

@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { Header } from "../components/header";
 import { Footer } from "../components/footer";
+import { useAuth } from "../auth/auth-context";
+import { getDashboard, type DashboardStats } from "../api/dashboard-api";
+import { getPosts } from "../api/forum-api";
+import { useEffect, useState } from "react";
 
 const features = [
   {
@@ -52,19 +56,47 @@ const journeySteps = [
   },
 ];
 
-const stats = [
+const fixedStats = [
   { value: "100%", label: "Anonymous by design" },
   { value: "24/7", label: "Always accessible" },
   { value: "AI", label: "Risk-aware routing" },
-  { value: "∞", label: "Forum conversations" },
 ];
 
+// ── Hook: load live stats only when authenticated ─────────────────────────────
+function useLiveStats(isAuthenticated: boolean) {
+  const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
+  const [forumCount, setForumCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    setLoading(true);
+
+    // Fire both requests in parallel
+    Promise.allSettled([
+      getDashboard().then((d) => setDashStats(d.stats)),
+      getPosts().then((posts) => setForumCount(posts.length)),
+    ]).finally(() => setLoading(false));
+  }, [isAuthenticated]);
+
+  return { dashStats, forumCount, loading };
+}
+
 export function HomePage() {
+  const { isAuthenticated } = useAuth();
+  const { dashStats, forumCount } = useLiveStats(isAuthenticated);
+
+  // Floating card values — real when available, neutral placeholder otherwise
+  const reportsCount = dashStats?.reportsCount ?? null;
+  const postsCount = forumCount ?? dashStats?.postsCount ?? null;
+
   return (
     <div className="min-h-screen bg-[#F9F7F3] font-sans text-[#274C77]">
       <Header />
 
       <main>
+        {/* ── Hero ── */}
         <section className="relative overflow-hidden border-b border-[#274C77]/15 bg-[#F9F7F3]">
           <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:radial-gradient(#274C77_1px,transparent_1px)] [background-size:30px_30px]" />
 
@@ -103,21 +135,41 @@ export function HomePage() {
               </div>
             </div>
 
+            {/* ── Dashboard mockup ── */}
             <div className="relative">
+              {/* Floating card: Reports */}
               <div className="absolute -left-6 -top-6 z-10 rounded-md border border-[#274C77]/10 bg-[#A3CEF1] shadow-xl lg:-left-10">
                 <div className="px-5 py-4">
                   <p className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-[#274C77]">
-                    Reports this week
+                    {isAuthenticated ? "Your reports" : "Reports this week"}
                   </p>
-                  <p className="mt-1 font-display text-3xl font-bold text-[#274C77]">
-                    148
-                  </p>
-                  <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
-                    ↑ 12% from last week
-                  </p>
+                  {reportsCount !== null ? (
+                    <>
+                      <p className="mt-1 font-display text-3xl font-bold text-[#274C77]">
+                        {reportsCount}
+                      </p>
+                      <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
+                        {reportsCount === 0
+                          ? "No reports yet"
+                          : reportsCount === 1
+                          ? "1 report submitted"
+                          : `${reportsCount} total submitted`}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1 font-display text-3xl font-bold text-[#274C77]">
+                        100%
+                      </p>
+                      <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
+                        Always anonymous
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
+              {/* Main dashboard card */}
               <div className="rounded-lg border border-[#274C77]/20 bg-[#274C77] p-3 shadow-[16px_16px_0_#6096BA]">
                 <div className="overflow-hidden rounded bg-[#F9F7F3]">
                   <div className="flex items-center justify-between border-b border-[#274C77]/10 bg-[#6096BA]/55 px-5 py-3">
@@ -189,25 +241,42 @@ export function HomePage() {
                 </div>
               </div>
 
+              {/* Floating card: Forum */}
               <div className="absolute -bottom-4 -right-4 rounded-md border border-[#274C77]/15 bg-[#A3CEF1] px-5 py-4 shadow-lg lg:-right-8">
                 <p className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-[#274C77]/70">
                   Forum activity
                 </p>
-                <p className="mt-1 font-display text-2xl font-bold text-[#274C77]">
-                  Active
-                </p>
-                <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
-                  34 threads this week
-                </p>
+                {postsCount !== null ? (
+                  <>
+                    <p className="mt-1 font-display text-2xl font-bold text-[#274C77]">
+                      {postsCount > 0 ? "Active" : "Open"}
+                    </p>
+                    <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
+                      {postsCount === 0
+                        ? "Start a discussion"
+                        : `${postsCount} thread${postsCount !== 1 ? "s" : ""} total`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 font-display text-2xl font-bold text-[#274C77]">
+                      Active
+                    </p>
+                    <p className="mt-0.5 font-sans text-[12px] text-[#274C77]/55">
+                      Peer support community
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </section>
 
+        {/* ── Stats bar ── */}
         <section className="border-b border-[#274C77]/10 bg-[#A3CEF1]/45">
           <div className="mx-auto max-w-[1440px] px-6 py-10 sm:px-10 lg:px-14">
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-              {stats.map((s) => (
+              {fixedStats.map((s) => (
                 <div key={s.label} className="text-center">
                   <p className="font-display text-[40px] font-bold leading-none text-[#274C77] sm:text-[52px]">
                     {s.value}
@@ -217,10 +286,20 @@ export function HomePage() {
                   </p>
                 </div>
               ))}
+              {/* 4th stat: real forum count when available */}
+              <div className="text-center">
+                <p className="font-display text-[40px] font-bold leading-none text-[#274C77] sm:text-[52px]">
+                  {postsCount !== null ? postsCount : "∞"}
+                </p>
+                <p className="mt-2 font-sans text-[14px] text-[#274C77]/60">
+                  Forum conversations
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
+        {/* ── Features ── */}
         <section className="border-b border-[#274C77]/10 bg-[#F9F7F3]">
           <div className="mx-auto max-w-[1440px] px-6 py-24 sm:px-10 lg:px-14 lg:py-32">
             <div className="grid gap-16 lg:grid-cols-[0.75fr_1.25fr]">
@@ -275,6 +354,7 @@ export function HomePage() {
           </div>
         </section>
 
+        {/* ── Journey ── */}
         <section className="border-b border-[#F9F7F3]/10 bg-[#274C77] text-[#F9F7F3]">
           <div className="mx-auto max-w-[1440px] px-6 py-24 sm:px-10 lg:px-14 lg:py-32">
             <div className="max-w-3xl">
@@ -311,6 +391,7 @@ export function HomePage() {
           </div>
         </section>
 
+        {/* ── CTA ── */}
         <section className="bg-[#6096BA]">
           <div className="mx-auto max-w-[1440px] px-6 py-24 sm:px-10 lg:px-14 lg:py-32">
             <div className="rounded-lg border border-[#274C77]/15 bg-[#F9F7F3] p-10 sm:p-14 lg:p-20">

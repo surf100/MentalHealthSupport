@@ -933,29 +933,17 @@ function PostCard({
             borderTop: "1px solid rgba(39,76,119,0.07)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                width: "24px",
-                height: "24px",
-                borderRadius: "50%",
-                background: "#A3CEF1",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "DM Sans, sans-serif",
-                fontSize: "10px",
-                fontWeight: 700,
-                color: "#274C77",
-                flexShrink: 0,
-              }}
-            >
-              {(post.author ?? "A")[0].toUpperCase()}
-            </div>
-            <span style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(39,76,119,0.52)" }}>
-              {post.author ?? "Anonymous"}
-            </span>
-          </div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+  <span
+    style={{
+      fontFamily: "DM Sans, sans-serif",
+      fontSize: "13px",
+      color: "rgba(39,76,119,0.52)",
+    }}
+  >
+    {post.author ?? "Anonymous"}
+  </span>
+</div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "rgba(39,76,119,0.42)" }}>
             <MessageSquare className="w-3.5 h-3.5" />

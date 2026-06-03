@@ -112,19 +112,21 @@ public class AuthService {
     }
 
     public CurrentUserResponse getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new InvalidCredentialsException("User not found"));
 
-        Profile profile = profileRepository.findByUser(user).orElse(null);
-        String displayName = profile != null ? profile.getDisplayName() : null;
+    Profile profile = profileRepository.findByUser(user).orElse(null);
+    String displayName = profile != null ? profile.getDisplayName() : null;
+    String avatarUrl = profile != null ? profile.getAvatarUrl() : null; // ← добавить
 
-        return new CurrentUserResponse(
-                user.getEmail(),
-                user.getNickname(),
-                displayName,
-                user.getRole().name()
-        );
-    }
+    return new CurrentUserResponse(
+            user.getEmail(),
+            user.getNickname(),
+            displayName,
+            avatarUrl, // ← добавить
+            user.getRole().name()
+    );
+}
 
     public AccountSettingsResponse updateAccount(String email, UpdateAccountRequest request) {
         User user = userRepository.findByEmail(email)

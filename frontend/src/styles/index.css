@@ -3,19 +3,19 @@
 @import './theme.css';
 
 :root {
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "DM Serif Display", Georgia, serif;
 }
 
 body {
+  font-family: "DM Serif Display", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-sans {
   font-family: "DM Sans", system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: "Playfair Display", Georgia, serif;
-}
-
-body {
-  font-family: 'DM Sans', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: "DM Serif Display", Georgia, serif;
 }

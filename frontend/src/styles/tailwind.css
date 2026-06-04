@@ -9,7 +9,7 @@
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: "DM Serif Display", Georgia, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
